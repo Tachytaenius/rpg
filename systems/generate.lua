@@ -9,13 +9,15 @@ local terrainMetatable = {
 	end
 }
 
+local smoothRandom, chaoticRandom
+
 local function generate(x, y, z, bumpWorld, seed)
 	local ox, oy, oz = cw * x, ch * y, cd * z
 	
 	local features = {}
-	
-	for i = 1, love.math.random(constants.minChunkFeatures, constants.maxChunkFeatures) do -- oh i sure do hope (TODO) something about determinism or lack thereof AAAAAAAAAAAAAAAAAAAAAAAAAUUUUUUUUUUGGGGHHHHHHHHHHHHHHHHHHHHHHHH
-		-- message from alicia, josie, romula, rema, arthur, and rodrick: dw we love you. you can do it :-)
+	local numFeatures = math.floor(constants.maxChunkFeatures - constants.minChunkFeatures + 1) * chaoticRandom(seed, x, y, z) + constants.minChunkFeatures
+	-- multiplied by, idk, if it's a jungle or something? TODO
+	for i = 1, numFeatures do
 		
 	end
 	
@@ -30,11 +32,19 @@ local function generate(x, y, z, bumpWorld, seed)
 			
 			local blockX = bw * (ox + x)
 			local blockZ = bd * (oz + z)
-			local terrainHeight = bh * (love.math.noise(blockX / 16, blockZ / 16) * 4 + 10)
+			local terrainHeight = bh * (smoothRandom(--[[seed, -- > 2 args turns love.math.noise perlin, do not want]] blockX/16, blockZ/16)*4+10)
 			for y = 0, ch - 1 do
 				local blockY = bh * (oy + y)
 				if blockY >= terrainHeight then
-					tempColumn[y + 1] = string.char(1)
+					local block
+					if blockY - bh < terrainHeight then
+						block = 2
+					elseif blockY - terrainHeight <= 2 then
+						block = 1
+					else
+						block = 3
+					end
+					tempColumn[y + 1] = string.char(block)
 					local box = {}
 					boxes[y] = box
 					bumpWorld:add(box, blockX, blockY, blockZ, bw, bh, bd)
@@ -52,40 +62,16 @@ local function generate(x, y, z, bumpWorld, seed)
 	return setmetatable(terrain, terrainMetatable)
 end
 
-return generate
+-- chaos (the world's seed in most cases) will make the input values create an entirely different world... provided it remains constant as the others change
+function smoothRandom(chaos, ...)
+	-- TODO
+	return love.math.noise(chaos, ...)
+end
 
--- for relBlockX = 0, cw - 1 do
--- 	local blockX = x * cw + relBlockX
--- 	local slice = {}
--- 	ret[relBlockX] = slice
--- 	for relBlockY = 0, ch - 1 do
--- 		local blockY = y * ch + relBlockY
--- 		local tempAisle = {}
--- 		local bumpBoxes = {}
--- 		local aisle = {bumpBoxes = bumpBoxes}
--- 		for relBlockZ = 0, cd - 1 do
--- 			local blockZ = z * cd + relBlockZ
--- 			local terrainHeight = math.floor(love.math.noise(blockX / 16, blockZ / 16) * 8)
--- 			local b = blockY - terrainHeight
--- 			if b > 0 then
--- 				if b == 1 then
--- 					b = 2
--- 				elseif b < 7 then
--- 					b = 1
--- 				else
--- 					b = 3
--- 				end
--- 			else
--- 				b = 0
--- 			end
--- 			tempAisle[relBlockZ + 1] = string.char(b)
--- 			if b ~= 0 and b ~= 3 then
--- 				local dummy = {}
--- 				bumpBoxes[relBlockZ] = dummy
--- 				bumpWorld:add({}, blockX * bw, blockY * bh, blockZ * bd, bw, bh, bd)
--- 			end
--- 		end
--- 		aisle.string = table.concat(tempAisle)
--- 		slice[relBlockY] = aisle
--- 	end
--- end
+-- it's *all* chaos here, but the world's seed will usually be put in to completely change what the other values do
+function chaoticRandom(...)
+	-- TODO
+	return love.math.random()
+end
+
+return generate

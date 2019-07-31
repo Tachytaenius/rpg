@@ -1,6 +1,5 @@
 local assets = require("assets")
 local constants = require("constants")
-local ss3d = require("lib.ss3d")
 
 local generate = require("systems.generate")
 
@@ -55,7 +54,7 @@ local function newChunk(x, y, z, chunks, bumpWorld, seed)
 	set(pzNeighbour, "nzNeighbour", ret)
 	set(nzNeighbour, "pzNeighbour", ret)
 	
-	ret.terrain = generate(x, y, z, bumpWorld)
+	ret.terrain = generate(x, y, z, bumpWorld, seed)
 	
 	return ret
 end

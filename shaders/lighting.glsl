@@ -27,42 +27,51 @@ vec3 fresnel(float cosTheta, vec3 F0) {
 	return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
-vec3 attenuate(vec3 colour, float dist) {
-	return 1.0 - smoothstep(vec3(0.0), colour, vec3(dist));
+float attenuate(float strength, float dist) {
+	return pow(1.0 - dist / strength, 0.5);
 }
 
 uniform vec3 viewPosition;
 
 uniform Image positionBuffer;
-uniform Image normalBuffer;
+uniform Image surfaceBuffer;
 uniform Image albedoBuffer;
 uniform Image materialBuffer;
 
-uniform vec3 lightPosition;
+uniform bool pointLight; // or directional
+uniform vec3 lightPosition; // angle for directionals
 uniform vec3 lightColour;
+uniform float lightStrength;
 
-uniform vec3 skyColour;
 uniform float ambience;
 
+uniform vec2 windowSize;
+
 vec4 effect(vec4 colour, Image image, vec2 textureCoords, vec2 windowCoords) {
+	textureCoords = windowCoords / windowSize;
+	
 	vec4 positionTexel = Texel(positionBuffer, textureCoords);
-	if (positionTexel.a == 0.0) return vec4(skyColour, 1);
+	if (positionTexel.a == 0.0) discard;
 	vec4 materialTexel = Texel(materialBuffer, textureCoords);
-	vec4 normalTexel = Texel(normalBuffer, textureCoords);
+	vec4 surfaceTexel = Texel(surfaceBuffer, textureCoords);
 	
 	vec3 position = positionTexel.xyz;
-	vec3 normal = normalTexel.xyz;
+	vec3 normal = surfaceTexel.xyz;
 	vec3 albedo = Texel(albedoBuffer, textureCoords).rgb;
 	
 	float metalness = materialTexel.r;
 	float roughness = materialTexel.g;
 	float rimLighting = materialTexel.b;
 	
-	float ambientIllumination = normalTexel.a; // 1 - ambientOcclusion. I made full alpha be full illumination because then in graphics editors normals become irrelevant when occlusion goes up (alpha goes down), like in the actual program. Just my way of seeing things.
+	float ambientIllumination = surfaceTexel.a; // 1 - ambientOcclusion. I made full alpha be full illumination because then in graphics editors normals become irrelevant when occlusion goes up (alpha goes down), like in the actual renderer. Just my way of seeing things.
 	
-	vec3 radiance = attenuate(lightColour, length(position - lightPosition));
+	vec3 radiance = pointLight?
+		lightColour * attenuate(lightStrength, distance(position, lightPosition)):
+		lightColour * lightStrength;
 	
-	vec3 L = normalize(position - lightPosition);
+	vec3 L = pointLight?
+		normalize(position - lightPosition):
+		normalize(-lightPosition);
 	vec3 V = normalize(position - viewPosition);
 	vec3 H = normalize(L + V);
 	
@@ -88,7 +97,7 @@ vec4 effect(vec4 colour, Image image, vec2 textureCoords, vec2 windowCoords) {
 	vec3 result =
 		diffuseLight * mix(albedo, vec3(0.0), metalness) +
 		reflectedLight +
-		albedo * (normalize(lightColour) * ambientIllumination * ambience);
+		(albedo * lightColour) * (ambientIllumination * ambience); // Brackets to help, they're not necessary
 	
 	return vec4(result, 1.0);
 }

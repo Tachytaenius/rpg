@@ -19,11 +19,12 @@ local think, move, newChunk =
 local checkSettingsHotkeys, takeScreenshot, didCommand, stepRawCommands, clearRawCommands, constructUI, destroyUI, updateUI, getPlayerWill, setTransforms, snap, warn, render
 
 -- Graphics
-local outlineShader, gBufferShader, lightingShader
+local gBufferShader, lightingShader, postShader, outlineShader
 local gBufferSetup, positionBuffer, surfaceBuffer, albedoBuffer, materialBuffer, depthBuffer
 local cameraEntity, sceneCamera, chunkMeshes
-local contentCanvas, infoCanvas, sceneCanvas
-local world, ui
+local lightCanvas, sceneCanvas, infoCanvas, contentCanvas
+local world, ui, fogTurbulenceTime
+local dummy = love.graphics.newImage(love.image.newImageData(1, 1))
 
 -- Used for mouse movement
 local mdx, mdy
@@ -50,16 +51,24 @@ function love.load(args)
 		depthstencil = depthBuffer
 	}
 	
+	lightCanvas = love.graphics.newCanvas(constants.width, constants.height)
 	sceneCanvas = love.graphics.newCanvas(constants.width, constants.height)
-	contentCanvas = love.graphics.newCanvas(constants.width, constants.height)
 	infoCanvas = love.graphics.newCanvas(constants.infoWidth, constants.infoHeight)
+	contentCanvas = love.graphics.newCanvas(constants.width, constants.height)
 	
 	gBufferShader = love.graphics.newShader("shaders/gBuffer.glsl")
 	lightingShader = love.graphics.newShader("shaders/lighting.glsl")
+	postShader = love.graphics.newShader("shaders/post.glsl")
 	outlineShader = love.graphics.newShader("shaders/outline.glsl")
+	
+	postShader:send("skyColour", {0.3, 0.4, 0.5})
+	postShader:send("fogRadius", 25)
+	postShader:send("fogStart", 0.6)
+	lightingShader:send("windowSize", {constants.width, constants.height})
 	outlineShader:send("windowSize", {constants.infoWidth, constants.infoHeight})
+	
 	chunkMeshes = list.new()
-	sceneCamera = {near = 0.0001, far = 100}
+	sceneCamera = {near = 0.0001, far = 30}
 	
 	-- and the rest of the loading routine:
 	
@@ -69,6 +78,7 @@ function love.load(args)
 			phi = 0, preModuloPhi = 0,
 			vx = 0, vy = 0, vz = 0, vtheta = 0, vphi = 0,
 			diameter = 0.48, height = 1.65, mass = 60,
+			fallFovStart = 1, fallFovEnd = 4, fallingFovIncrease = 10,
 			fov = 90, eyeHeight = 1.58, controller = 1,
 			abilities = {
 				mobility = {
@@ -151,7 +161,7 @@ function love.load(args)
 			}
 		}
 		
-		local seed = args[2] or love.math.random(2 ^ 53) - 1
+		local seed = args[2] or love.math.random(1000) -- TODO: seed safety?
 		world = {
 			seed = seed,
 			rng = love.math.newRandomGenerator(seed),
@@ -173,7 +183,7 @@ function love.load(args)
 				local chunksY = {}
 				chunksX[y] = chunksY
 				for z = 0, worldDepth - 1 do
-					local newChunk = newChunk(x, y, z, world.chunks, world.bumpWorld)
+					local newChunk = newChunk(x, y, z, world.chunks, world.bumpWorld, world.seed)
 					chunksY[z] = newChunk
 				end
 			end
@@ -636,24 +646,38 @@ function render()
 	love.graphics.origin()
 	
 	love.graphics.setShader(lightingShader)
-	lightingShader:send("positionBuffer", gBufferSetup[1])
-	lightingShader:send("normalBuffer", gBufferSetup[2])
-	lightingShader:send("albedoBuffer", gBufferSetup[3])
-	lightingShader:send("materialBuffer", gBufferSetup[4])
+	lightingShader:send("positionBuffer", positionBuffer)
+	lightingShader:send("surfaceBuffer", surfaceBuffer)
+	lightingShader:send("albedoBuffer", albedoBuffer)
+	lightingShader:send("materialBuffer", materialBuffer)
 	lightingShader:send("viewPosition", cameraPos)
-	lightingShader:send("skyColour", {0.25, 0.25, 0.25})
-	lightingShader:send("ambience", 0.05)
-	love.graphics.setCanvas(sceneCanvas)
-	love.graphics.clear()
-	-- love.graphics.setBlendMode("add")
+	love.graphics.setCanvas(lightCanvas)
+	love.graphics.clear(0, 0, 0, 1)
+	love.graphics.setBlendMode("add")
+	lightingShader:send("ambience", 0.1)
+	lightingShader:send("pointLight", true)
 	-- for i = 1, world.lights.size do
 		-- local light = world.lights:get(i)
 		-- lightingShader:send("lightPosition", light.position)
-		lightingShader:send("lightColour", {25, 25, 25})
-		lightingShader:send("lightPosition", {sceneCamera.pos:unpack()})
-		love.graphics.draw(love.graphics.newImage(love.image.newImageData(constants.width, constants.height)))
+		-- lightingShader:send("lightColour", light.colour)
+		-- lightingShader:send("lightStrength", light.strength)
+		-- lightingShader:send("lightPosition", light.position)
+		-- local lightInfluenceX, lightInfluenceY, lightInfluenceW, lightInfluenceH = 0, 0, 480, 270
+		-- love.graphics.draw(dummy, lightInfluenceX, lightInfluenceY, 0, lightInfluenceW, lightInfluenceH)
 	-- end
+	lightingShader:send("lightColour", {1, 1, 1})
+	lightingShader:send("lightStrength", 1)
+	lightingShader:send("pointLight", false)
+	lightingShader:send("lightPosition", {-0.75, -0.75, -0.25})
+	lightingShader:send("ambience", 0.1)
+	local lightInfluenceX, lightInfluenceY, lightInfluenceW, lightInfluenceH = 0, 0, 480, 270
+	love.graphics.draw(dummy, lightInfluenceX, lightInfluenceY, 0, lightInfluenceW, lightInfluenceH)
 	love.graphics.setBlendMode("alpha", "alphamultiply")
+	love.graphics.setCanvas(sceneCanvas)
+	love.graphics.setShader(postShader)
+	postShader:send("positionBuffer", positionBuffer)
+	postShader:send("viewPosition", cameraPos)
+	love.graphics.draw(lightCanvas)
 	love.graphics.setCanvas()
 	love.graphics.setShader()
 end
