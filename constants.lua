@@ -64,6 +64,8 @@ constants.maxChunkFeatures = 2
 constants.velocitySnap = 0.001
 constants.bumpCellSize = 4
 
+constants.minShadowBias = 0.005
+constants.maxShadowBias = 0.05
 constants.lightNearPlane = 0.001
 constants.shadowMapSize = 1024
 

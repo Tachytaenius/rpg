@@ -78,6 +78,8 @@ function love.load(args)
 	
 	lightingShader:send("nearPlane", constants.lightNearPlane) -- For getting values out of the shadow map depth buffer
 	lightingShader:send("windowSize", {constants.width, constants.height})
+	lightingShader:send("maximumBias", constants.maxShadowBias)
+	lightingShader:send("minimumBias", constants.minShadowBias)
 	postShader:send("skyColour", {0.3, 0.4, 0.5})
 	postShader:send("fogRadius", 25)
 	postShader:send("fogStart", 0.6)
@@ -717,14 +719,7 @@ function renderLights()
 			lightingShader:send("pointLight", false)
 			lightingShader:send("lightPosition", light.angle)
 		else
-			LITE = LITE or {
-				near = constants.lightNearPlane,
-				pos = cpml.vec3(light.position),
-				far = light.strength,
-				angle = cpml.vec3(0, 0, 0),
-				fov = 90
-			}
-			viewMatrix = getCameraTransform(LITE, true)
+			-- viewMatrix = getCameraTransform(idk, true)
 			lightingShader:send("pointLight", true)
 			lightingShader:send("lightPosition", light.position)
 		end
@@ -733,14 +728,14 @@ function renderLights()
 		lightingShader:send("lightStrength", light.strength)
 		lightingShader:send("viewPosition", {sceneCamera.pos:unpack()})
 		
-		shadowShader:send("view", viewMatrix)
-		love.graphics.setCanvas(shadowMapSetup)
-		love.graphics.clear()
-		love.graphics.setShader(shadowShader)
-		renderObjects()
-		
-		lightingShader:send("lightView", viewMatrix)
-		lightingShader:send("shadowMap", shadowMap)
+		-- shadowShader:send("view", viewMatrix)
+		-- love.graphics.setCanvas(shadowMapSetup)
+		-- love.graphics.clear()
+		-- love.graphics.setShader(shadowShader)
+		-- renderObjects()
+		-- 
+		-- lightingShader:send("lightView", viewMatrix)
+		-- lightingShader:send("shadowMap", shadowMap)
 		love.graphics.setShader(lightingShader)
 		love.graphics.setCanvas(lightCanvas)
 		
@@ -762,12 +757,7 @@ function finishingTouches()
 end
 
 function love.keypressed(k)
-	if k == "i" then
-		LITE.pos = sceneCamera.pos
-		world.lights:get(1).position = {LITE.pos:unpack()}
-		LITE.angle = sceneCamera.angle
-		LITE.far = world.lights:get(1).strength
-	elseif k == "j" then
+	if k == "j" then
 		local x, y, z, w, h, d = world.bumpWorld:getCube(testman)
 		x, y, z = x+w/2, y+h/2, z+d/2
 		x, y, z = math.floor(x/constants.blockWidth), math.floor(y/constants.blockHeight), math.floor(z/constants.blockDepth)

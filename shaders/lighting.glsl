@@ -47,6 +47,9 @@ uniform Image shadowMap;
 uniform mat4 lightView;
 uniform float ambience;
 uniform vec2 windowSize;
+uniform float minimumBias;
+uniform float maximumBias;
+uniform bool temporary_enableShadows;
 
 float depthToLinear(float depth, float near, float far) {
 	float z = depth * 2.0 - 1.0;
@@ -71,23 +74,27 @@ vec4 effect(vec4 colour, Image image, vec2 textureCoords, vec2 windowCoords) {
 	
 	float ambientIllumination = surfaceTexel.a; // 1 - ambientOcclusion. I made full alpha be full illumination because then in graphics editors normals become irrelevant when occlusion goes up (alpha goes down), like in the actual renderer. Just my way of seeing things.
 	
+	vec3 L = pointLight?
+		normalize(position - lightPosition):
+		normalize(-lightPosition);
+	vec3 V = normalize(position - viewPosition);
+	vec3 H = normalize(L + V);
+	
+	bool lit = true;
+	if(temporary_enableShadows) {
+	float bias = max(maximumBias * (1.0 - dot(normal, L)), minimumBias);
 	vec4 shadowCoords = lightView * positionTexel;
 	vec2 shadowMapCoords = (shadowCoords.xy / shadowCoords.w) / 2.0 + 0.5;
 	float shadowDistance = depthToLinear(Texel(shadowMap, shadowMapCoords).r, nearPlane, lightStrength);
 	bool inShadowMap = clamp(shadowMapCoords, 0.0, 1.0) == shadowMapCoords && shadowCoords.z >= 0;
-	bool lit = inShadowMap && shadowCoords.z <= shadowDistance;
+	lit = inShadowMap && shadowCoords.z - bias <= shadowDistance;
+	}
 	
 	vec3 radiance = lit?
 		pointLight?
 			lightColour * attenuate(lightStrength, distance(position, lightPosition)):
 			lightColour * lightStrength:
 		vec3(0.0);
-
-	vec3 L = pointLight?
-		normalize(position - lightPosition):
-		normalize(-lightPosition);
-	vec3 V = normalize(position - viewPosition);
-	vec3 H = normalize(L + V);
 	
 	vec3 specularity = mix(vec3(0.04), albedo, metalness);
 	
