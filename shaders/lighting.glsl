@@ -28,7 +28,7 @@ vec3 fresnel(float cosTheta, vec3 F0) {
 }
 
 float attenuate(float strength, float dist) {
-	return pow(1.0 - dist / strength, 0.5);
+	return pow(max(1.0 - dist / strength, 0.0), 0.75);
 }
 
 uniform vec3 viewPosition;
@@ -41,11 +41,17 @@ uniform Image materialBuffer;
 uniform bool pointLight; // or directional
 uniform vec3 lightPosition; // angle for directionals
 uniform vec3 lightColour;
-uniform float lightStrength;
-
+uniform float nearPlane;
+uniform float lightStrength; // also far plane
+uniform Image shadowMap;
+uniform mat4 lightView;
 uniform float ambience;
-
 uniform vec2 windowSize;
+
+float depthToLinear(float depth, float near, float far) {
+	float z = depth * 2.0 - 1.0;
+	return (2.0 * near * far) / (far + near - z * (far - near));
+}
 
 vec4 effect(vec4 colour, Image image, vec2 textureCoords, vec2 windowCoords) {
 	textureCoords = windowCoords / windowSize;
@@ -65,10 +71,18 @@ vec4 effect(vec4 colour, Image image, vec2 textureCoords, vec2 windowCoords) {
 	
 	float ambientIllumination = surfaceTexel.a; // 1 - ambientOcclusion. I made full alpha be full illumination because then in graphics editors normals become irrelevant when occlusion goes up (alpha goes down), like in the actual renderer. Just my way of seeing things.
 	
-	vec3 radiance = pointLight?
-		lightColour * attenuate(lightStrength, distance(position, lightPosition)):
-		lightColour * lightStrength;
+	vec4 shadowCoords = lightView * positionTexel;
+	vec2 shadowMapCoords = (shadowCoords.xy / shadowCoords.w) / 2.0 + 0.5;
+	float shadowDistance = depthToLinear(Texel(shadowMap, shadowMapCoords).r, nearPlane, lightStrength);
+	bool inShadowMap = clamp(shadowMapCoords, 0.0, 1.0) == shadowMapCoords && shadowCoords.z >= 0;
+	bool lit = inShadowMap && shadowCoords.z <= shadowDistance;
 	
+	vec3 radiance = lit?
+		pointLight?
+			lightColour * attenuate(lightStrength, distance(position, lightPosition)):
+			lightColour * lightStrength:
+		vec3(0.0);
+
 	vec3 L = pointLight?
 		normalize(position - lightPosition):
 		normalize(-lightPosition);

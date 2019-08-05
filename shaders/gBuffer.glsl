@@ -45,10 +45,10 @@ varying vec3 fragmentPosition;
 	uniform Image surfaceMap;
 	
 	void effect() {
-		vec2 textureCoords = vec2(VaryingTexCoord);
+		vec2 textureCoords = VaryingTexCoord.st;
 		love_Canvases[0] = vec4(fragmentPosition, 1);
 		vec4 surfaceTexel = Texel(surfaceMap, textureCoords);
-		love_Canvases[1] = vec4(perturbNormal(normal, surfaceTexel.rgb * 2 - 1, textureCoords, normalize(viewPosition - fragmentPosition)), 1);
+		love_Canvases[1] = vec4(perturbNormal(normal, surfaceTexel.rgb * 2 - 1, textureCoords, normalize(viewPosition - fragmentPosition)), surfaceTexel.a);
 		love_Canvases[2] = Texel(albedoMap, textureCoords);
 		love_Canvases[3] = Texel(materialMap, textureCoords);
 	}

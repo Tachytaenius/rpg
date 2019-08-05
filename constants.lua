@@ -64,7 +64,8 @@ constants.maxChunkFeatures = 2
 constants.velocitySnap = 0.001
 constants.bumpCellSize = 4
 
-constants.glossScale = 100
+constants.lightNearPlane = 0.001
+constants.shadowMapSize = 1024
 
 constants.vertexFormat = {
 	{"VertexPosition", "float", 3},

@@ -82,7 +82,7 @@ function updateMesh(chunk)
 		
 		if chunkToCheck then
 			x, y, z = x % cw, y % ch, z % cd
-			return string.byte(chunkToCheck.terrain[x][z].string, y + 1)
+			return string.byte(chunkToCheck.terrain[x][z].columnString, y + 1)
 		end
 	end
 	
@@ -94,7 +94,7 @@ function updateMesh(chunk)
 		for y = 0, ch - 1 do
 			for z = 0, cd - 1 do
 				-- tb means "this block"
-				local tb = string.byte(chunk.terrain[x][z].string, y + 1)
+				local tb = string.byte(chunk.terrain[x][z].columnString, y + 1)
 				local tbx, tby, tbz = chunkX * cw + x, chunkY * ch + y, chunkZ * cd + z
 				if canDraw(tb) then
 					local us, vs = 1/16, 1/16
@@ -154,7 +154,7 @@ function updateMesh(chunk)
 		end
 	end
 	
-	if chunk.mesh then chunk.mesh:destroy() end
+	if chunk.mesh then chunk.mesh:release() end
 	if lenVerts == 0 then return end
 	chunk.mesh = love.graphics.newMesh(vertexFormat, verts, "triangles")
 end

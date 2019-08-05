@@ -15,13 +15,22 @@ local think, move, newChunk =
 	require("systems.move"),
 	require("systems.newChunk")
 
+do -- Great for modifying blocks within chunks!
+	local tbl, concat = {}, table.concat
+	function string:setchar(pos, chr)
+		tbl[1], tbl[2], tbl[3] = self:sub(1, pos - 1), chr, self:sub(pos + 1)
+		return concat(tbl)
+	end
+end
+
 -- These functions are defined way below where they won't clutter amongst the love functions
 local checkSettingsHotkeys, takeScreenshot, didCommand, stepRawCommands, clearRawCommands, constructUI, destroyUI, updateUI, getPlayerWill, setTransforms, snap, warn, render
 
 -- Graphics
-local gBufferShader, lightingShader, postShader, outlineShader
+local gBufferShader, shadowShader, lightingShader, postShader, outlineShader
 local gBufferSetup, positionBuffer, surfaceBuffer, albedoBuffer, materialBuffer, depthBuffer
-local cameraEntity, sceneCamera, chunkMeshes
+local shadowMapSetup, shadowMap
+local cameraEntity, sceneCamera, chunksToDraw
 local lightCanvas, sceneCanvas, infoCanvas, contentCanvas
 local world, ui, fogTurbulenceTime
 local dummy = love.graphics.newImage(love.image.newImageData(1, 1))
@@ -30,6 +39,7 @@ local dummy = love.graphics.newImage(love.image.newImageData(1, 1))
 local mdx, mdy
 
 function love.load(args)
+	love.graphics.setMeshCullMode("back")
 	love.graphics.setDefaultFilter("nearest", "nearest")
 	love.graphics.setLineStyle("rough")
 	love.graphics.setDepthMode("lequal", true)
@@ -45,10 +55,14 @@ function love.load(args)
 	albedoBuffer = love.graphics.newCanvas(constants.width, constants.height)
 	materialBuffer = love.graphics.newCanvas(constants.width, constants.height)
 	depthBuffer = love.graphics.newCanvas(constants.width, constants.height, {format = "depth32f"})
-	
 	gBufferSetup = {
 		positionBuffer, surfaceBuffer, albedoBuffer, materialBuffer,
 		depthstencil = depthBuffer
+	}
+	
+	shadowMap = love.graphics.newCanvas(constants.shadowMapSize, constants.shadowMapSize, {format = "depth32f", readable = true})
+	shadowMapSetup = {
+		depthstencil = shadowMap
 	}
 	
 	lightCanvas = love.graphics.newCanvas(constants.width, constants.height)
@@ -57,17 +71,19 @@ function love.load(args)
 	contentCanvas = love.graphics.newCanvas(constants.width, constants.height)
 	
 	gBufferShader = love.graphics.newShader("shaders/gBuffer.glsl")
+	shadowShader = love.graphics.newShader("shaders/shadow.glsl")
 	lightingShader = love.graphics.newShader("shaders/lighting.glsl")
 	postShader = love.graphics.newShader("shaders/post.glsl")
 	outlineShader = love.graphics.newShader("shaders/outline.glsl")
 	
+	lightingShader:send("nearPlane", constants.lightNearPlane) -- For getting values out of the shadow map depth buffer
+	lightingShader:send("windowSize", {constants.width, constants.height})
 	postShader:send("skyColour", {0.3, 0.4, 0.5})
 	postShader:send("fogRadius", 25)
 	postShader:send("fogStart", 0.6)
-	lightingShader:send("windowSize", {constants.width, constants.height})
 	outlineShader:send("windowSize", {constants.infoWidth, constants.infoHeight})
 	
-	chunkMeshes = list.new()
+	chunksToDraw = list.new()
 	sceneCamera = {near = 0.0001, far = 30}
 	
 	-- and the rest of the loading routine:
@@ -168,6 +184,7 @@ function love.load(args)
 			bumpWorld = bump.newWorld(constants.bumpCellSize),
 			entities = list.new():add(testman),
 			chunks = {},
+			lights = list.new():add({position={5, -1.5, 5}, colour={1, 1, 1}, strength = 10}),
 			gravityWill = {
 				isGravity = true,
 				targetY = 50,
@@ -193,7 +210,9 @@ function love.load(args)
 			for y = 0, worldHeight - 1 do
 				local chunkY = chunkX[y]
 				for z = 0, worldDepth - 1 do
-					chunkY[z]:updateMesh()
+					local chunk = chunkY[z]
+					chunk:updateMesh()
+					chunksToDraw:add(chunk)
 				end
 			end
 		end
@@ -216,7 +235,7 @@ function love.draw(lerp)
 		love.graphics.clear(0, 0, 0, 0)
 		love.graphics.print("FPS: " .. love.timer.getFPS() .. "\nGarbage: " .. collectgarbage("count") * 1024, 1, 1)
 	end
-	if not (ui and ui.causesPause) then
+	if cameraEntity and not (ui and ui.causesPause) then
 		setTransforms(lerp)
 		render()
 	end
@@ -592,105 +611,173 @@ function warn(text)
 	print(text)
 end
 
-local getCameraTransform
+local getCameraTransform, renderGBuffer, sendGBufferToLightingShader, finishingTouches
 
 function render()
-	if not cameraEntity then return end
+	renderGBuffer()
+	sendGBufferToLightingShader()
+	renderLights()
+	finishingTouches() -- reset blend mode, draw lightCanvas to sceneCanvas with post shader, and finally unset shader and canvas
+end
+
+function getCameraTransform(camera, isLight)
+	local ret = cpml.mat4.new()
 	
-	love.graphics.setMeshCullMode("back")
+	ret:rotate(ret, camera.angle.x, cpml.vec3.unit_x)
+	ret:rotate(ret, camera.angle.y, cpml.vec3.unit_y)
+	ret:rotate(ret, camera.angle.z, cpml.vec3.unit_z)
+	ret:translate(ret, -camera.pos)
 	
+	local perspective = cpml.mat4.from_perspective(camera.fov, isLight and 1 or constants.width / constants.height, camera.near, camera.far)
+	
+	
+	return perspective:transpose(perspective) * ret:transpose(ret)
+end
+
+local renderObjects
+
+function renderGBuffer()
 	love.graphics.setShader(gBufferShader)
+	gBufferShader:send("view", getCameraTransform(sceneCamera))
+	gBufferShader:send("viewPosition", {sceneCamera.pos:unpack()})
 	love.graphics.setCanvas(gBufferSetup)
 	love.graphics.clear()
-	love.graphics.translate(constants.width/2, constants.height/2)
-	gBufferShader:send("view", getCameraTransform())
-	local cameraPos = {sceneCamera.pos:unpack()}
-	gBufferShader:send("viewPosition", cameraPos)
-	
-	local chunkTransform = cpml.mat4.identity()
-	gBufferShader:send("modelMatrix", chunkTransform) -- or lack thereof
-	gBufferShader:send("modelMatrixInverse", chunkTransform)
-	
-	for x = 0, worldWidth - 1 do
-		local chunkX = world.chunks[x]
-		for y = 0, worldHeight - 1 do
-			local chunkY = chunkX[y]
-			for z = 0, worldDepth - 1 do
-				local mesh = chunkY[z].mesh
-				if mesh then
-					gBufferShader:send("surfaceMap", assets.terrain.surfaceMap.value)
-					gBufferShader:send("albedoMap", assets.terrain.albedoMap.value)
-					gBufferShader:send("materialMap", assets.terrain.materialMap.value)
-					
-					love.graphics.draw(mesh)
-				end
-			end
-		end
-	end
-	
-	for i = 1, world.entities.size do
-		local model = world.entities:get(i).model
-		if model then
-			gBufferShader:send("modelMatrix", model.transform)
-			local inverse = cpml.mat4.invert(cpml.mat4.new(), model.transform)
-			inverse = inverse:transpose(inverse)
-			gBufferShader:send("modelMatrixInverse", inverse)
-			gBufferShader:send("surfaceMap", model.surfaceMap.value)
-			gBufferShader:send("albedoMap", model.albedoMap.value)
-			gBufferShader:send("materialMap", model.materialMap.value)
-			
-			love.graphics.draw(model.mesh)
-		end
-	end
-	
-	love.graphics.origin()
-	
-	love.graphics.setShader(lightingShader)
+	renderObjects()
+end
+
+function sendGBufferToLightingShader()
 	lightingShader:send("positionBuffer", positionBuffer)
 	lightingShader:send("surfaceBuffer", surfaceBuffer)
 	lightingShader:send("albedoBuffer", albedoBuffer)
 	lightingShader:send("materialBuffer", materialBuffer)
-	lightingShader:send("viewPosition", cameraPos)
+	lightingShader:send("viewPosition", {sceneCamera.pos:unpack()})
+end
+
+function renderObjects()
+	local cx, cy
+	if love.graphics.getShader() == shadowShader then
+		cx, cy = constants.shadowMapSize / 2, constants.shadowMapSize / 2
+	else
+		cx, cy = constants.width/2, constants.height/2
+	end
+	
+	local currentShader = love.graphics.getShader()
+	local chunkTransform = cpml.mat4.identity()
+	currentShader:send("modelMatrix", chunkTransform) -- or lack thereof
+	
+	-- Chunks
+	if currentShader == gBufferShader then
+		currentShader:send("modelMatrixInverse", chunkTransform)
+		gBufferShader:send("surfaceMap", assets.terrain.surfaceMap.value)
+		gBufferShader:send("albedoMap", assets.terrain.albedoMap.value)
+		gBufferShader:send("materialMap", assets.terrain.materialMap.value)
+	end
+	for i = 1, chunksToDraw.size do
+		local mesh = chunksToDraw:get(i).mesh
+		if mesh then
+			love.graphics.draw(mesh, cx, cy)
+		end
+	end
+	
+	-- Entities
+	for i = 1, world.entities.size do
+		local model = world.entities:get(i).model
+		if model then
+			local currentShader = love.graphics.getShader()
+			
+			
+			currentShader:send("modelMatrix", model.transform)
+			
+			if currentShader == gBufferShader then
+				local inverse = cpml.mat4.invert(cpml.mat4.new(), model.transform)
+				inverse = inverse:transpose(inverse)
+				currentShader:send("modelMatrixInverse", inverse)
+				gBufferShader:send("surfaceMap", model.surfaceMap.value)
+				gBufferShader:send("albedoMap", model.albedoMap.value)
+				gBufferShader:send("materialMap", model.materialMap.value)
+			end
+			
+			love.graphics.draw(model.mesh, cx, cy)
+		end
+	end
+end
+
+function renderLights()
+	lightingShader:send("ambience", 0.05) -- TODO: not out of *closed environments* though, surely
+	love.graphics.setBlendMode("add")
 	love.graphics.setCanvas(lightCanvas)
 	love.graphics.clear(0, 0, 0, 1)
-	love.graphics.setBlendMode("add")
-	lightingShader:send("ambience", 0.1)
-	lightingShader:send("pointLight", true)
-	-- for i = 1, world.lights.size do
-		-- local light = world.lights:get(i)
-		-- lightingShader:send("lightPosition", light.position)
-		-- lightingShader:send("lightColour", light.colour)
-		-- lightingShader:send("lightStrength", light.strength)
-		-- lightingShader:send("lightPosition", light.position)
-		-- local lightInfluenceX, lightInfluenceY, lightInfluenceW, lightInfluenceH = 0, 0, 480, 270
-		-- love.graphics.draw(dummy, lightInfluenceX, lightInfluenceY, 0, lightInfluenceW, lightInfluenceH)
-	-- end
-	lightingShader:send("lightColour", {1, 1, 1})
-	lightingShader:send("lightStrength", 1)
-	lightingShader:send("pointLight", false)
-	lightingShader:send("lightPosition", {-0.75, -0.75, -0.25})
-	lightingShader:send("ambience", 0.1)
-	local lightInfluenceX, lightInfluenceY, lightInfluenceW, lightInfluenceH = 0, 0, 480, 270
-	love.graphics.draw(dummy, lightInfluenceX, lightInfluenceY, 0, lightInfluenceW, lightInfluenceH)
+	
+	for i = 1, world.lights.size do
+		local light = world.lights:get(i)
+		
+		local viewMatrix
+		
+		if light.isDirectional then
+			lightingShader:send("pointLight", false)
+			lightingShader:send("lightPosition", light.angle)
+		else
+			LITE = LITE or {
+				near = constants.lightNearPlane,
+				pos = cpml.vec3(light.position),
+				far = light.strength,
+				angle = cpml.vec3(0, 0, 0),
+				fov = 90
+			}
+			viewMatrix = getCameraTransform(LITE, true)
+			lightingShader:send("pointLight", true)
+			lightingShader:send("lightPosition", light.position)
+		end
+		
+		lightingShader:send("lightColour", light.colour)
+		lightingShader:send("lightStrength", light.strength)
+		lightingShader:send("viewPosition", {sceneCamera.pos:unpack()})
+		
+		shadowShader:send("view", viewMatrix)
+		love.graphics.setCanvas(shadowMapSetup)
+		love.graphics.clear()
+		love.graphics.setShader(shadowShader)
+		renderObjects()
+		
+		lightingShader:send("lightView", viewMatrix)
+		lightingShader:send("shadowMap", shadowMap)
+		love.graphics.setShader(lightingShader)
+		love.graphics.setCanvas(lightCanvas)
+		
+		-- TODO
+		local lightInfluenceX, lightInfluenceY, lightInfluenceW, lightInfluenceH = 0, 0, constants.width, constants.height
+		love.graphics.draw(dummy, lightInfluenceX, lightInfluenceY, 0, lightInfluenceW, lightInfluenceH)
+	end
+end
+
+function finishingTouches()
 	love.graphics.setBlendMode("alpha", "alphamultiply")
 	love.graphics.setCanvas(sceneCanvas)
 	love.graphics.setShader(postShader)
 	postShader:send("positionBuffer", positionBuffer)
-	postShader:send("viewPosition", cameraPos)
+	postShader:send("viewPosition", {sceneCamera.pos:unpack()})
 	love.graphics.draw(lightCanvas)
 	love.graphics.setCanvas()
 	love.graphics.setShader()
 end
 
-function getCameraTransform()
-	local ret = cpml.mat4.new()
-	
-	ret:rotate(ret, sceneCamera.angle.x, cpml.vec3.unit_x)
-	ret:rotate(ret, sceneCamera.angle.y, cpml.vec3.unit_y)
-	ret:rotate(ret, sceneCamera.angle.z, cpml.vec3.unit_z)
-	ret:translate(ret, -sceneCamera.pos)
-	
-	local perspective = cpml.mat4.from_perspective(sceneCamera.fov, constants.width / constants.height, sceneCamera.near, sceneCamera.far)
-	
-	return perspective:transpose(perspective) * ret:transpose(ret)
+function love.keypressed(k)
+	if k == "i" then
+		LITE.pos = sceneCamera.pos
+		world.lights:get(1).position = {LITE.pos:unpack()}
+		LITE.angle = sceneCamera.angle
+		LITE.far = world.lights:get(1).strength
+	elseif k == "j" then
+		local x, y, z, w, h, d = world.bumpWorld:getCube(testman)
+		x, y, z = x+w/2, y+h/2, z+d/2
+		x, y, z = math.floor(x/constants.blockWidth), math.floor(y/constants.blockHeight), math.floor(z/constants.blockDepth)
+		local cx, cy, cz = math.floor(x/constants.chunkWidth), math.floor(y/constants.chunkHeight), math.floor(z/constants.chunkDepth)
+		-- pcall(function()
+			local chunk = world.chunks[cx][cy][cz]
+			local column = chunk.terrain[x%constants.chunkWidth][z%constants.chunkDepth]
+			column.columnTable[y%constants.chunkHeight+1] = string.char(1)
+			column:updateString()
+			chunk:updateMesh()
+		-- end)
+	end
 end

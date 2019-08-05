@@ -9,7 +9,7 @@ local terrainMetatable = {
 	end
 }
 
-local smoothRandom, chaoticRandom
+local smoothRandom, chaoticRandom, updateString
 
 local function generate(x, y, z, bumpWorld, seed)
 	local ox, oy, oz = cw * x, ch * y, cd * z
@@ -27,12 +27,13 @@ local function generate(x, y, z, bumpWorld, seed)
 		local terrainX = {}
 		
 		for z = 0, cd - 1 do
-			local tempColumn = {}
+			local columnTable = {}
 			local boxes = {}
 			
 			local blockX = bw * (ox + x)
 			local blockZ = bd * (oz + z)
 			local terrainHeight = bh * (smoothRandom(--[[seed, -- > 2 args turns love.math.noise perlin, do not want]] blockX/16, blockZ/16)*4+10)
+			if math.floor(terrainHeight) == 5 then terrainHeight = terrainHeight * 2 end
 			for y = 0, ch - 1 do
 				local blockY = bh * (oy + y)
 				if blockY >= terrainHeight then
@@ -44,16 +45,16 @@ local function generate(x, y, z, bumpWorld, seed)
 					else
 						block = 3
 					end
-					tempColumn[y + 1] = string.char(block)
+					columnTable[y + 1] = string.char(block)
 					local box = {}
 					boxes[y] = box
 					bumpWorld:add(box, blockX, blockY, blockZ, bw, bh, bd)
 				else
-					tempColumn[y + 1] = string.char(0)
+					columnTable[y + 1] = string.char(0)
 				end
 			end
 			
-			terrainX[z] = {string = table.concat(tempColumn)}
+			terrainX[z] = {columnString = table.concat(columnTable), columnTable = columnTable, updateString = updateString}
 		end
 		
 		terrain[x] = terrainX
@@ -72,6 +73,10 @@ end
 function chaoticRandom(...)
 	-- TODO
 	return love.math.random()
+end
+
+function updateString(self)
+	self.columnString = table.concat(self.columnTable)
 end
 
 return generate
