@@ -110,8 +110,8 @@ function love.load(args)
 							positive = 6.3
 						},
 						y = {
-							negative = 5.2,
-							positive = 0
+							negative = 0,
+							positive = 5.2
 						},
 						z = {
 							negative = 6.6,
@@ -132,8 +132,8 @@ function love.load(args)
 							positive = 6.3*2
 						},
 						y = {
-							negative = math.huge,
-							positive = 0,
+							negative = 0,
+							positive = math.huge
 						},
 						z = {
 							negative = 6.6*2,
@@ -186,14 +186,14 @@ function love.load(args)
 			bumpWorld = bump.newWorld(constants.bumpCellSize),
 			entities = list.new():add(testman),
 			chunks = {},
-			lights = list.new():add({position={5, -1.5, 5}, colour={1, 1, 1}, strength = 10}),
+			lights = list.new():add({position={5, 8.5, 5}, colour={1, 1, 1}, strength = 10}),
 			gravityWill = {
 				isGravity = true,
 				targetY = 50,
 				amount = 9.8
 			}
 		}
-		world.bumpWorld:add(testman, 4, -2, 4, testman.diameter, testman.height, testman.diameter)
+		world.bumpWorld:add(testman, 4, 9, 4, testman.diameter, testman.height, testman.diameter)
 		worldWidth, worldHeight, worldDepth = 10, 4, 10 -- TODO: HELLO I AM A GLOBAL NO NO NO BAD REEEE
 		for x = 0, worldWidth - 1 do
 			local chunksX = {}
@@ -390,8 +390,8 @@ function love.mousemoved(x, y, dx, dy)
 			local div = settings.mouse.divideByScale and settings.graphics.scale or 1
 			ui.mouseX = math.min(math.max(0, ui.mouseX + (dx * settings.mouse.xSensitivity) / div), constants.width)
 			ui.mouseY = math.min(math.max(0, ui.mouseY + (dy * settings.mouse.ySensitivity) / div), constants.height)
-		elseif cameraEntity then -- TODO: not just else?
-			mdx, mdy = mdx + dx * delta, mdy - dy * delta
+		elseif cameraEntity then -- TODO: not just else? (reason being, what if demo replay had its own, separate camera)
+			mdx, mdy = mdx + dx * delta, mdy + dy * delta
 		end
 	end
 end
@@ -555,7 +555,7 @@ function getPlayerWill()
 	tvz * (sneak and not run and 0.1 or run and not sneak and 1 or 0.5)
 	
 	-- Sneak and walk has half the jump height of run
-	will.targetVelocityYMultiplier = didCommand("jump") and -math.sqrt(run and 1 or 0.5) or 0
+	will.targetVelocityYMultiplier = didCommand("jump") and math.sqrt(run and 1 or 0.5) or 0
 	will.targetVelocityThetaMultiplier = mdx
 	will.targetVelocityPhiMultiplier = mdy
 	
@@ -599,7 +599,7 @@ function setTransforms(lerp)
 		local x, y, z, w, h, d, theta, phi = lerpEntity(cameraEntity, lerp)
 		-- TODO: allow lerping of all attributes
 		sceneCamera.fov = cameraEntity.fov
-		sceneCamera.pos = cpml.vec3(x + w / 2, y + h - cameraEntity.eyeHeight, z + d / 2)
+		sceneCamera.pos = cpml.vec3(x + w / 2, y + cameraEntity.eyeHeight, z + d / 2)
 		sceneCamera.angle = cpml.vec3(phi, theta, 0)
 	end
 end
@@ -624,6 +624,8 @@ end
 
 function getCameraTransform(camera, isLight)
 	local ret = cpml.mat4.new()
+	
+	ret:scale(ret, cpml.vec3(1, -1, 1)) -- +y = up (best for visualising world) --> +y = down (what love does)
 	
 	ret:rotate(ret, camera.angle.x, cpml.vec3.unit_x)
 	ret:rotate(ret, camera.angle.y, cpml.vec3.unit_y)
@@ -705,7 +707,7 @@ function renderObjects()
 end
 
 function renderLights()
-	lightingShader:send("ambience", 0.05) -- TODO: not out of *closed environments* though, surely
+	lightingShader:send("ambience", 0.1) -- TODO: not out of *closed environments* though, surely
 	love.graphics.setBlendMode("add")
 	love.graphics.setCanvas(lightCanvas)
 	love.graphics.clear(0, 0, 0, 1)

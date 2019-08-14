@@ -11,7 +11,7 @@ end
 
 function move.accelerate(entity, will, dt)
 	if will.isGravity then
-		entity.vy = useTargetAndChange(entity.vy, will.targetY, entity.vy > will.targetY and -will.amount or will.amount, dt)
+		entity.vy = useTargetAndChange(entity.vy, -will.targetY, entity.vy < will.targetY and -will.amount or will.amount, dt)
 		return
 	end
 	
@@ -145,7 +145,7 @@ function response(world, col, x,y,z, w,h,d, goalX, goalY, goalZ, filter)
 		goalX = tch.x
 	end
 	if col.normal.y ~= 0 then
-		if col.normal.y < 0 then
+		if col.normal.y > 0 then
 			entity.grounded = true
 		end
 		entity.nextVy = -entity.nextVy * bounciness

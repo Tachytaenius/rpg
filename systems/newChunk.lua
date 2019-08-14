@@ -24,7 +24,7 @@ local function set(t, k, v)
 end
 
 local function canDraw(thisBlock, neighbourBlock)
-	return thisBlock ~= 0 and (neighbourBlock ~= thisBlock or neighbourBlock == nil)
+	return thisBlock ~= 0 and (neighbourBlock == 0 or neighbourBlock == nil)
 end
 
 local function newChunk(x, y, z, chunks, bumpWorld, seed)
@@ -129,7 +129,7 @@ function updateMesh(chunk)
 					end
 					
 					if tb == 2 then
-						texx, texy = 0, 0
+						texx, texy = 2, 0
 						texx, texy = texx + 1, texy + 1
 						u1, v1 = texx * us, texy * vs
 						u2, v2 = u1 - us, v1 - vs
@@ -140,7 +140,7 @@ function updateMesh(chunk)
 					end
 					
 					if tb == 2 then
-						texx, texy = 2, 0
+						texx, texy = 0, 0
 						texx, texy = texx + 1, texy + 1
 						u1, v1 = texx * us, texy * vs
 						u2, v2 = u1 - us, v1 - vs
@@ -160,6 +160,7 @@ function updateMesh(chunk)
 end
 
 function addRect(verts, lenVerts, side, x, y, z, a, b, u1, v1, u2, v2)
+	v1, v2 = v2, v1 -- fixes idk from flipping y of world
 	local vv, vV, Vv, VV
 	if side == "nyz" then
 		vv = {x, y, z, u1, v2, -1, 0, 0}
@@ -193,8 +194,8 @@ function addRect(verts, lenVerts, side, x, y, z, a, b, u1, v1, u2, v2)
 		VV = {x + a, y + b, z, u2, v1, 0, 0, 1}
 	end
 	
-	verts[lenVerts + 1], verts[lenVerts + 2], verts[lenVerts + 3] = vv, Vv, vV
-	verts[lenVerts + 4], verts[lenVerts + 5], verts[lenVerts + 6] = Vv, VV, vV
+	verts[lenVerts + 1], verts[lenVerts + 2], verts[lenVerts + 3] = vv, vV, Vv
+	verts[lenVerts + 4], verts[lenVerts + 5], verts[lenVerts + 6] = Vv, vV, VV
 end
 
 return newChunk
