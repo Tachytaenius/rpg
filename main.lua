@@ -186,7 +186,7 @@ function love.load(args)
 			bumpWorld = bump.newWorld(constants.bumpCellSize),
 			entities = list.new():add(testman),
 			chunks = {},
-			lights = list.new():add({position={5, 8.5, 5}, colour={1, 1, 1}, strength = 10}),
+			lights = list.new():add({isDirectional = true, angle={0.4, 0.8, 0.6}, colour={1, 1, 1}, strength = 3}),
 			gravityWill = {
 				isGravity = true,
 				targetY = 50,
@@ -707,7 +707,7 @@ function renderObjects()
 end
 
 function renderLights()
-	lightingShader:send("ambience", 0.1) -- TODO: not out of *closed environments* though, surely
+	lightingShader:send("ambience", 0.25) -- TODO: not out of *closed environments* though, surely
 	love.graphics.setBlendMode("add")
 	love.graphics.setCanvas(lightCanvas)
 	love.graphics.clear(0, 0, 0, 1)

@@ -81,7 +81,7 @@ end
 function generateTree(terrain, ox, oy, oz, trunkX, trunkZ)
 	-- TODO
 	local treeDiameter = 1
-	local treeHeight = 3
+	local treeHeight = 2
 	
 	local blockX = bw * (ox + trunkX)
 	local blockZ = bd * (oz + trunkZ)
@@ -95,7 +95,7 @@ function generateTree(terrain, ox, oy, oz, trunkX, trunkZ)
 			for y = 0, ch - 1 do
 				local blockYInMetres = bh * (oy + y)
 				if blockYInMetres >= terrainHeightInMetresAtTrunk and blockYInMetres - terrainHeightInMetresAtTrunk <= treeHeight then
-					columnTable[y + 1] = string.char(3)
+					columnTable[y + 1] = string.char(4)
 				end
 			end
 		end

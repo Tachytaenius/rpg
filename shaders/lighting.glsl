@@ -82,12 +82,12 @@ vec4 effect(vec4 colour, Image image, vec2 textureCoords, vec2 windowCoords) {
 	
 	bool lit = true;
 	if(temporary_enableShadows) {
-	float bias = max(maximumBias * (1.0 - dot(normal, L)), minimumBias);
-	vec4 shadowCoords = lightView * positionTexel;
-	vec2 shadowMapCoords = (shadowCoords.xy / shadowCoords.w) / 2.0 + 0.5;
-	float shadowDistance = depthToLinear(Texel(shadowMap, shadowMapCoords).r, nearPlane, lightStrength);
-	bool inShadowMap = clamp(shadowMapCoords, 0.0, 1.0) == shadowMapCoords && shadowCoords.z >= 0;
-	lit = inShadowMap && shadowCoords.z - bias <= shadowDistance;
+		float bias = max(maximumBias * (1.0 - dot(normal, L)), minimumBias);
+		vec4 shadowCoords = lightView * positionTexel;
+		vec2 shadowMapCoords = (shadowCoords.xy / shadowCoords.w) / 2.0 + 0.5;
+		float shadowDistance = depthToLinear(Texel(shadowMap, shadowMapCoords).r, nearPlane, lightStrength);
+		bool inShadowMap = clamp(shadowMapCoords, 0.0, 1.0) == shadowMapCoords && shadowCoords.z >= 0;
+		lit = inShadowMap && shadowCoords.z - bias <= shadowDistance;
 	}
 	
 	vec3 radiance = lit?

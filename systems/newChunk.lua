@@ -106,6 +106,8 @@ function updateMesh(chunk)
 						texx, texy = 0, 2
 					elseif tb == 3 then
 						texx, texy = 1, 0
+					elseif tb == 4 then
+						texx, texy = 1, 2
 					end
 					texx, texy = texx + 1, texy + 1
 					
@@ -130,6 +132,11 @@ function updateMesh(chunk)
 					
 					if tb == 2 then
 						texx, texy = 2, 0
+						texx, texy = texx + 1, texy + 1
+						u1, v1 = texx * us, texy * vs
+						u2, v2 = u1 - us, v1 - vs
+					elseif tb == 4 then
+						texx, texy = 2, 2
 						texx, texy = texx + 1, texy + 1
 						u1, v1 = texx * us, texy * vs
 						u2, v2 = u1 - us, v1 - vs
