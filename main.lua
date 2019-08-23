@@ -1,7 +1,8 @@
-local constants, assets, settings =
+local constants, assets, settings, registry =
 	require("constants"),
 	require("assets"),
-	require("settings")
+	require("settings"),
+	require("registry")
 
 local suit, bump, list, detmath, cpml =
 	require("lib.suit"),
@@ -10,7 +11,7 @@ local suit, bump, list, detmath, cpml =
 	require("lib.detmath"),
 	require("lib.cpml")
 
-local think, getWill, move, newChunk, scene, input, ui, takeScreenshot =
+local think, getWill, move, newChunk, scene, input, ui, takeScreenshot, newEntity =
 	require("systems.think"),
 	require("systems.getWill"),
 	require("systems.move"),
@@ -18,7 +19,8 @@ local think, getWill, move, newChunk, scene, input, ui, takeScreenshot =
 	require("systems.scene"),
 	require("systems.input"),
 	require("systems.ui"),
-	require("systems.takeScreenshot")
+	require("systems.takeScreenshot"),
+	require("systems.newEntity")
 
 local outlineShader
 local infoCanvas, contentCanvas
@@ -47,107 +49,20 @@ function love.load(args)
 	love.graphics.setFont(assets.ui.font.value)
 	
 	if not args[1] or args[1] == "new" then
-		testman = {
-			theta = detmath.tau * 3 / 8, preModuloTheta = 0,
-			phi = 0, preModuloPhi = 0,
-			vx = 0, vy = 0, vz = 0, vtheta = 0, vphi = 0,
-			diameter = 0.48, height = 1.65, mass = 60,
-			fallFovStart = 1, fallFovEnd = 4, fallingFovIncrease = 10,
-			fov = 90, eyeHeight = 1.58, controller = 1,
-			abilities = {
-				mobility = {
-					ungroundedXChangeMultiplier = 0.2,
-					ungroundedYChangeMultiplier = 0,
-					ungroundedZChangeMultiplier = 0.2,
-					
-					maximumTargetVelocity = {
-						x = {
-							negative = 6.3,
-							positive = 6.3
-						},
-						y = {
-							negative = 0,
-							positive = 5.2
-						},
-						z = {
-							negative = 6.6,
-							positive = 5.8
-						},
-						theta = {
-							negative = detmath.tau * 2,
-							positive = detmath.tau * 2
-						},
-						phi = {
-							negative = detmath.tau * 2,
-							positive = detmath.tau * 2
-						}
-					},
-					maximumAcceleration = {
-						x = {
-							negative = 6.3*2,
-							positive = 6.3*2
-						},
-						y = {
-							negative = 0,
-							positive = math.huge
-						},
-						z = {
-							negative = 6.6*2,
-							positive = 5.8*2
-						},
-						theta = {
-							negative = detmath.tau * 40,
-							positive = detmath.tau * 40
-						},
-						phi = {
-							negative = detmath.tau * 40,
-							positive = detmath.tau * 40
-						}
-					},
-					maximumDeceleration = {
-						x = {
-							negative = 6.3*2,
-							positive = 6.3*2
-						},
-						y = {
-							negative = 0,
-							positive = 0,
-						},
-						z = {
-							negative = 6.6*2,
-							positive = 5.8*2
-						},
-						theta = {
-							negative = detmath.tau * 40,
-							positive = detmath.tau * 40
-						},
-						phi = {
-							negative = detmath.tau * 40,
-							positive = detmath.tau * 40
-						}
-					}
-				},
-				
-				move = true,
-				turn = true,
-				
-				stepUpRange = 0.5 -- TODO
-			}
-		}
 		
 		local seed = args[2] or love.math.random(1000) -- TODO: seed safety?
 		world = {
 			seed = seed,
 			rng = love.math.newRandomGenerator(seed),
 			bumpWorld = bump.newWorld(constants.bumpCellSize),
-			entities = list.new():add(testman),
+			entities = list.new(),
 			chunks = {},
 			-- lights = list.new():add({isDirectional = true, angle={0.4, 0.8, 0.6}, colour={1, 1, 1}, strength = 3}),
 			lights = list.new():add({position = {10, 10, 10}, colour={1, 1, 1}, strength = 20}),
 			gravityAmount = 9.8,
 			gravityMaxFallSpeed = 50
 		}
-		world.bumpWorld:add(testman, 4, 9, 4, testman.diameter, testman.height, testman.diameter)
+		testman = newEntity(world, "testman", 4, 9, 5, 1)
 		worldWidth, worldHeight, worldDepth = 10, 4, 10 -- TODO: HELLO I AM A GLOBAL NO NO NO BAD REEEE
 		for x = 0, worldWidth - 1 do
 			local chunksX = {}
@@ -192,6 +107,9 @@ function love.draw(lerp)
 		love.graphics.print("FPS: " .. love.timer.getFPS() .. "\nGarbage: " .. collectgarbage("count") * 1024, 1, 1)
 	end
 	if scene.cameraEntity and not (ui.current and ui.current.causesPause) then
+		if not settings.graphics.interpolation then
+			lerp = nil
+		end
 		scene.setTransforms(world, lerp)
 		scene.render(world)
 	end

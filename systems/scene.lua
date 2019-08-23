@@ -198,19 +198,26 @@ function finishingTouches()
 	love.graphics.setShader()
 end
 
-local function lerpEntity(bumpWorld, entity, lerp)
+-- "Spatials" is a stupid (TODO) way to say position, size, rotation, et cetera
+local function getEntitySpatials(bumpWorld, entity, lerp)
 	local x, y, z, w, h, d, theta, phi
 	
 	x, y, z, w, h, d = bumpWorld:getCube(entity)
-	x, y, z, w, h, d, theta, phi =
-		(1 - lerp) * entity.px + lerp * x,
-		(1 - lerp) * entity.py + lerp * y,
-		(1 - lerp) * entity.pz + lerp * z,
-		(1 - lerp) * entity.pw + lerp * w,
-		(1 - lerp) * entity.ph + lerp * h,
-		(1 - lerp) * entity.pd + lerp * d,
-		(1 - lerp) * entity.ptheta + lerp * entity.preModuloTheta,
-		(1 - lerp) * entity.pphi + lerp * entity.phi
+	if lerp then
+		x, y, z, w, h, d, theta, phi =
+			(1 - lerp) * entity.px + lerp * x,
+			(1 - lerp) * entity.py + lerp * y,
+			(1 - lerp) * entity.pz + lerp * z,
+			(1 - lerp) * entity.pw + lerp * w,
+			(1 - lerp) * entity.ph + lerp * h,
+			(1 - lerp) * entity.pd + lerp * d,
+			(1 - lerp) * entity.ptheta + lerp * entity.preModuloTheta,
+			(1 - lerp) * entity.pphi + lerp * entity.phi
+	else
+		theta, phi =
+			entity.preModuloTheta,
+			entity.phi
+	end
 	return x, y, z, w, h, d, theta, phi
 end
 
@@ -223,7 +230,7 @@ function scene.setTransforms(world, lerp)
 		local model = entity.model
 		
 		if model then
-			local x, y, z, w, h, d, theta, phi = lerpEntity(bumpWorld, entity, lerp)
+			local x, y, z, w, h, d, theta, phi = getEntitySpatials(bumpWorld, entity, lerp)
 			
 			local transform = cpml.mat4.identity()
 			transform:translate(transform, cpml.vec3(x+w/2, y+h/2, z+d/2))
@@ -234,7 +241,7 @@ function scene.setTransforms(world, lerp)
 	end
 	
 	if scene.cameraEntity then
-		local x, y, z, w, h, d, theta, phi = lerpEntity(bumpWorld, scene.cameraEntity, lerp)
+		local x, y, z, w, h, d, theta, phi = getEntitySpatials(bumpWorld, scene.cameraEntity, lerp)
 		-- TODO: allow lerping of all attributes
 		
 		

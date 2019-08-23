@@ -11,7 +11,8 @@ local template = {
 		showPerformance = function(try) return type(try) == "boolean" and try end,
 		scale = function(try) return isNatural(try) and try or 2 end,
 		display = function(try) return isNatural(try) and try or 1 end,
-		maxTicksPerFrame = function(try) return isNatural(try) and try or 4 end
+		maxTicksPerFrame = function(try) return isNatural(try) and try or 4 end,
+		vsync = function(try) if type(try) == "boolean" then return try else return true end end
 	},
 	
 	manualGarbageCollection = {
@@ -129,9 +130,10 @@ return setmetatable({}, {
 		elseif action == "apply" then
 			if settings.graphics.fullscreen then
 				local width, height = love.window.getDesktopDimensions(settings.graphics.display)
-				love.window.setMode(width, height, {fullscreen = true, borderless = true, display = settings.graphics.display})
+				-- TODO: Shader values removed?
+				love.window.setMode(width, height, {vsync = settings.graphics.vsync, fullscreen = true, borderless = true, display = settings.graphics.display})
 			else
-				love.window.setMode(constants.width * settings.graphics.scale, constants.height * settings.graphics.scale, {fullscreen = false, borderless = false, display = settings.graphics.display})
+				love.window.setMode(constants.width * settings.graphics.scale, constants.height * settings.graphics.scale, {vsync = settings.graphics.vsync, fullscreen = false, borderless = false, display = settings.graphics.display})
 			end
 			
 		else
