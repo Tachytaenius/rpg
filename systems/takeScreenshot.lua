@@ -1,0 +1,22 @@
+local warn = require("systems.warn")
+
+return function(canvas)
+	local info = love.filesystem.getInfo("screenshots")
+	if not info then
+		print("Couldn't find screenshots folder. Creating")
+		love.filesystem.createDirectory("screenshots")
+	elseif info.type ~= "directory" then
+		-- TODO: UX(?)
+		warn("There is already a non-folder item called screenshots. Rename it or move it to take a screenshot")
+		return
+	end
+	
+	local current = 0
+	for _, filename in pairs(love.filesystem.getDirectoryItems("screenshots")) do
+		if string.match(filename, "^[1-9]%d*%.png$") then -- Make sure this file could have been created by this function
+			current = math.max(current, tonumber(string.sub(filename, 1, -5)))
+		end
+	end
+	
+	canvas:newImageData():encode("png", "screenshots/" .. current + 1 .. ".png")
+end

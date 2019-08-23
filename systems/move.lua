@@ -9,12 +9,11 @@ function move.initialise(bumpWorld)
 	bumpWorld:addResponse("proper", response)
 end
 
-function move.accelerate(entity, will, dt)
-	if will.isGravity then
-		entity.vy = useTargetAndChange(entity.vy, -will.targetY, entity.vy < will.targetY and -will.amount or will.amount, dt)
-		return
-	end
-	
+function move.gravitate(entity, amount, maxFallSpeed, dt)
+	entity.vy = useTargetAndChange(entity.vy, -maxFallSpeed, entity.vy > -maxFallSpeed and -amount or amount, dt)
+end
+
+function move.selfAccelerate(entity, will, dt)
 	local abilities = entity.abilities
 	local mobility = abilities.mobility
 	

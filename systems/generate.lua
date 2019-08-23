@@ -51,7 +51,9 @@ local function generate(cx, cy, cz, bumpWorld, seed)
 		end
 	end
 	
-	generateTree(terrain, ox, oy, oz, cw / 2, cd / 2)
+	if cx % 3 == 1 and cz % 3 == 1 then
+		generateTree(terrain, ox, oy, oz, cw / 2, cd / 2)
+	end
 	
 	for x = 0, cw - 1 do
 		local terrainX = terrain[x]
@@ -81,7 +83,7 @@ end
 function generateTree(terrain, ox, oy, oz, trunkX, trunkZ)
 	-- TODO
 	local treeDiameter = 1
-	local treeHeight = 2
+	local treeHeight = 4
 	
 	local blockX = bw * (ox + trunkX)
 	local blockZ = bd * (oz + trunkZ)
