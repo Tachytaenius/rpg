@@ -1,7 +1,7 @@
 local constants, assets, settings, registry =
 	require("constants"),
 	require("assets"),
-	require("settings"),
+	require("systems.settings"),
 	require("registry")
 
 local suit, bump, list, detmath, cpml =
@@ -289,6 +289,7 @@ function love.run()
 			love.graphics.present()
 		end
 		
+		-- TEMP: off in settings
 		if settings.manualGarbageCollection.enable then -- Garbage collection
 			local start = love.timer.getTime()
 			for _=1, settings.manualGarbageCollection.maxSteps do
@@ -298,6 +299,7 @@ function love.run()
 			
 			-- TODO
 			-- FIXME: collectgarbage("count") returns all memory in use, not just garbage?
+			-- I think it's to do with all the chunk meshes?
 			-- if collectgarbage("count") / 1024 > settings.manualGarbageCollection.safetyMargin then
 				-- collectgarbage("collect")
 			-- end

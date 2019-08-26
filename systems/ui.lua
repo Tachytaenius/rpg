@@ -2,7 +2,7 @@ local suit = require("lib.suit")
 local input = require("systems.input")
 local constants, settings, assets =
 	require("constants"),
-	require("settings"),
+	require("systems.settings"),
 	require("assets")
 
 local ui = {}

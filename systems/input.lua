@@ -1,6 +1,6 @@
 local constants, settings =
 	require("constants"),
-	require("settings")
+	require("systems.settings")
 
 local input = {}
 
