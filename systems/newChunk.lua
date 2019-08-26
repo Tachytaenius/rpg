@@ -3,7 +3,6 @@ local constants = require("constants")
 
 local generate = require("systems.generate")
 
-local terrain = assets.terrain
 local bw, bh, bd = constants.blockWidth, constants.blockHeight, constants.blockDepth
 local cw, ch, cd = constants.chunkWidth, constants.chunkHeight, constants.chunkDepth
 
@@ -109,10 +108,9 @@ function updateMesh(chunk)
 					elseif tb == 4 then
 						texx, texy = 1, 2
 					end
-					texx, texy = texx + 1, texy + 1
 					
 					local u1, v1 = texx * us, texy * vs
-					local u2, v2 = u1 - us, v1 - vs
+					local u2, v2 = u1 + us, v1 + vs
 					if canDraw(tb, getBlock(x - 1, y, z)) then
 						addRect(verts, lenVerts, "nyz", tbx * bw, tby * bh, tbz * bd, bh, bd, u1, v1, u2, v2)
 						lenVerts = lenVerts + 6
@@ -132,14 +130,12 @@ function updateMesh(chunk)
 					
 					if tb == 2 then
 						texx, texy = 2, 0
-						texx, texy = texx + 1, texy + 1
 						u1, v1 = texx * us, texy * vs
-						u2, v2 = u1 - us, v1 - vs
+						u2, v2 = u1 + us, v1 + vs
 					elseif tb == 4 then
 						texx, texy = 2, 2
-						texx, texy = texx + 1, texy + 1
 						u1, v1 = texx * us, texy * vs
-						u2, v2 = u1 - us, v1 - vs
+						u2, v2 = u1 + us, v1 + vs
 					end
 					if canDraw(tb, getBlock(x, y - 1, z)) then
 						addRect(verts, lenVerts, "nxz", tbx * bw, tby * bh, tbz * bd, bw, bd, u1, v1, u2, v2)
@@ -148,9 +144,8 @@ function updateMesh(chunk)
 					
 					if tb == 2 then
 						texx, texy = 0, 0
-						texx, texy = texx + 1, texy + 1
 						u1, v1 = texx * us, texy * vs
-						u2, v2 = u1 - us, v1 - vs
+						u2, v2 = u1 + us, v1 + vs
 					end
 					if canDraw(tb, getBlock(x, y + 1, z)) then
 						addRect(verts, lenVerts, "pxz", tbx * bw, (tby + 1) * bh, tbz * bd, bw, bd, u1, v1, u2, v2)
@@ -167,7 +162,6 @@ function updateMesh(chunk)
 end
 
 function addRect(verts, lenVerts, side, x, y, z, a, b, u1, v1, u2, v2)
-	v1, v2 = v2, v1 -- fixes idk from flipping y of world
 	local vv, vV, Vv, VV
 	if side == "nyz" then
 		vv = {x, y, z, u1, v2, -1, 0, 0}

@@ -17,19 +17,19 @@ function move.selfAccelerate(entity, will, dt)
 	local abilities = entity.abilities
 	local mobility = abilities.mobility
 	
-	local targetX = will.targetVelocityXMultiplier
+	local targetX = will.targetVelocityXMultiplier or 0
 	targetX = targetX * mobility.maximumTargetVelocity.x[targetX > 0 and "positive" or "negative"]
 	
-	local targetY = will.targetVelocityYMultiplier
+	local targetY = will.targetVelocityYMultiplier or 0
 	targetY = targetY * mobility.maximumTargetVelocity.y[targetY > 0 and "positive" or "negative"]
 	
-	local targetZ = will.targetVelocityZMultiplier
+	local targetZ = will.targetVelocityZMultiplier or 0
 	targetZ = targetZ * mobility.maximumTargetVelocity.z[targetZ > 0 and "positive" or "negative"]
 	
-	local targetTheta = will.targetVelocityThetaMultiplier
+	local targetTheta = will.targetVelocityThetaMultiplier or 0
 	targetTheta = targetTheta * mobility.maximumTargetVelocity.theta[targetTheta > 0 and "positive" or "negative"]
 	
-	local targetPhi = will.targetVelocityPhiMultiplier
+	local targetPhi = will.targetVelocityPhiMultiplier or 0
 	targetPhi = targetPhi * mobility.maximumTargetVelocity.phi[targetPhi > 0 and "positive" or "negative"]
 	
 	if abilities.turn then

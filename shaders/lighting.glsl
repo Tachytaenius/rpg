@@ -118,7 +118,7 @@ vec4 effect(vec4 colour, Image image, vec2 textureCoords, vec2 windowCoords) {
 	vec3 result =
 		diffuseLight * mix(albedo, vec3(0.0), metalness) +
 		reflectedLight +
-		(albedo * lightColour) * (ambientIllumination * ambience); // Brackets to help, they're not necessary
+		(albedo * lightColour) * (ambientIllumination * ambience); // Brackets to help understanding, they're not necessary
 	
 	return vec4(result, 1.0);
 }

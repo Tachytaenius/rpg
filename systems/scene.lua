@@ -43,12 +43,13 @@ function scene.init()
 	lightingShader:send("windowSize", {constants.width, constants.height})
 	lightingShader:send("maximumBias", constants.maxShadowBias)
 	lightingShader:send("minimumBias", constants.minShadowBias)
-	-- The magic numbers are temporary, I promise
+	-- TEMP: The magic numbers won't stay, I promise
 	postShader:send("skyColour", {0.3, 0.4, 0.5})
 	postShader:send("fogRadius", 25)
 	postShader:send("fogStart", 0.6)
 	
 	scene.chunksToDraw = list.new()
+	scene.entitiesToDraw = list.new()
 	scene.camera = {near = 0.0001, far = 30}
 end
 
@@ -80,7 +81,7 @@ end
 local renderObjects
 
 function renderGBuffer(world)
-	love.graphics.setBlendMode("replace")
+	love.graphics.setBlendMode("replace", "premultiplied")
 	love.graphics.setShader(gBufferShader)
 	gBufferShader:send("view", getCameraTransform(scene.camera))
 	gBufferShader:send("viewPosition", {scene.camera.pos:unpack()})
@@ -124,8 +125,8 @@ function renderObjects(world)
 	end
 	
 	-- Entities
-	for i = 1, world.entities.size do
-		local model = world.entities:get(i).model
+	for i = 1, scene.entitiesToDraw.size do
+		local model = scene.entitiesToDraw:get(i).model
 		if model then
 			local currentShader = love.graphics.getShader()
 			
@@ -141,13 +142,13 @@ function renderObjects(world)
 				gBufferShader:send("materialMap", model.materialMap.value)
 			end
 			
-			love.graphics.draw(model.mesh, cx, cy)
+			love.graphics.draw(model.mesh.value, cx, cy)
 		end
 	end
 end
 
 function renderLights(world)
-	lightingShader:send("ambience", 0.05) -- TODO: not out of *closed environments* though, surely
+	lightingShader:send("ambience", 0.25) -- TODO: not out of *closed environments* though, surely
 	love.graphics.setBlendMode("add")
 	love.graphics.setCanvas(lightCanvas)
 	love.graphics.clear(0, 0, 0, 1)
@@ -223,19 +224,19 @@ end
 
 function scene.setTransforms(world, lerp)
 	local bumpWorld = world.bumpWorld
-	local entities = world.entities
+	local entitiesToDraw = scene.entitiesToDraw
 	
-	for i = 1, entities.size do
-		local entity = entities:get(i)
+	for i = 1, entitiesToDraw.size do
+		local entity = entitiesToDraw:get(i)
 		local model = entity.model
 		
 		if model then
 			local x, y, z, w, h, d, theta, phi = getEntitySpatials(bumpWorld, entity, lerp)
 			
 			local transform = cpml.mat4.identity()
-			transform:translate(transform, cpml.vec3(x+w/2, y+h/2, z+d/2))
-			transform:rotate(transform, theta, cpml.vec3.unit_x)
-			transform:rotate(transform, phi, cpml.vec3.unit_y)
+			transform:translate(transform, cpml.vec3(x+w/2, y+entity.eyeHeight, z+d/2))
+			transform:rotate(transform, -theta - math.pi, cpml.vec3.unit_y)
+			transform:rotate(transform, phi, cpml.vec3.unit_x)
 			model.transform = transform:transpose(transform)
 		end
 	end

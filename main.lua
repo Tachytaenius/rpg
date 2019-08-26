@@ -49,7 +49,6 @@ function love.load(args)
 	love.graphics.setFont(assets.ui.font.value)
 	
 	if not args[1] or args[1] == "new" then
-		
 		local seed = args[2] or love.math.random(1000) -- TODO: seed safety?
 		world = {
 			seed = seed,
@@ -57,13 +56,16 @@ function love.load(args)
 			bumpWorld = bump.newWorld(constants.bumpCellSize),
 			entities = list.new(),
 			chunks = {},
-			-- lights = list.new():add({isDirectional = true, angle={0.4, 0.8, 0.6}, colour={1, 1, 1}, strength = 3}),
-			lights = list.new():add({position = {10, 10, 10}, colour={1, 1, 1}, strength = 20}),
+			lights = list.new():add({isDirectional = true, angle={0.4, 0.8, 0.6}, colour={1, 1, 1}, strength = 3}),
 			gravityAmount = 9.8,
 			gravityMaxFallSpeed = 50
 		}
-		testman = newEntity(world, "testman", 4, 9, 5, 1)
-		worldWidth, worldHeight, worldDepth = 10, 4, 10 -- TODO: HELLO I AM A GLOBAL NO NO NO BAD REEEE
+		local testmanPlayer = newEntity(world, "testman", 4, 9, 4, 1)
+		-- scene.entitiesToDraw:add(testmanPlayer)
+		local testmanCreep = newEntity(world, "testman", 4, 9, 5, "creep")
+		scene.entitiesToDraw:add(testmanCreep)
+		scene.cameraEntity = testmanPlayer
+		worldWidth, worldHeight, worldDepth = 25, 1, 25 -- TODO: HELLO I AM A GLOBAL NO NO NO BAD REEEE
 		for x = 0, worldWidth - 1 do
 			local chunksX = {}
 			world.chunks[x] = chunksX
@@ -96,7 +98,6 @@ function love.load(args)
 	end
 	
 	mdx, mdy = 0, 0
-	scene.cameraEntity = testman
 	move.initialise(world.bumpWorld)
 end
 
@@ -251,6 +252,7 @@ end
 -- The following function is based on the MIT licensed code here: https://gist.github.com/Positive07/5e80f03cabd069087930d569c148241c
 -- Copyright (c) 2019 Arvid Gerstmann, Jake Besworth, Max, Pablo Mayobre, LÖVE Developers, Henry Fleminger Thomson
 
+require("timedebugger")
 local delta = 0 -- For mousemoved
 function love.run()
 	love.load(love.arg.parseGameArguments(arg))
@@ -294,13 +296,15 @@ function love.run()
 				collectgarbage("step", 1)
 			end
 			
-			if collectgarbage("count") / 1024 > settings.manualGarbageCollection.safetyMargin then
-				collectgarbage("collect")
-			end
+			-- TODO
+			-- FIXME: collectgarbage("count") returns all memory in use, not just garbage?
+			-- if collectgarbage("count") / 1024 > settings.manualGarbageCollection.safetyMargin then
+				-- collectgarbage("collect")
+			-- end
 			
 			collectgarbage("stop")
 		else
-			collectgarbage("start")
+			collectgarbage("restart")
 		end
 		
 		love.timer.sleep(0.001)

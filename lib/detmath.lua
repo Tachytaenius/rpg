@@ -5,7 +5,7 @@
 
 local tau = 6.28318530717958647692 -- Pi is also provided, of course :-)
 local e = 2.71828182845904523536
-local abs, floor, sqrt, modf = math.abs, math.floor, math.sqrt, math.modf
+local abs, floor, sqrt, modf, huge = math.abs, math.floor, math.sqrt, math.modf, math.huge
 
 local function exp(x)
 	local xint, xfract = modf(x)
@@ -81,18 +81,18 @@ local function atan(x)
 	return positiveX and resultForAbsoluteX or -resultForAbsoluteX
 end
 
+-- TODO: Find a better name
 local function angle(x, y)
-	x = x == 0 and 1 or x
 	local theta = atan(y/x)
-	theta = x < 0 and theta + tau/2 or a
+	theta = x == 0 and tau/4 * y / abs(y) or x < 0 and theta + tau/2 or theta
 	return theta % tau
 end
 
+-- Personally discouraged as I believe that, though the transition from atan to atan2 makes sense, the definition of the arctangent doesn't accomodate two arguments
 local function atan2(y, x)
 	-- return angle(x, y)
-	x = x == 0 and 1 or x
 	local theta = atan(y/x)
-	theta = x < 0 and theta + tau/2 or a
+	theta = x == 0 and tau/4 * y / abs(y) or x < 0 and theta + tau/2 or theta
 	return theta % tau
 end
 
