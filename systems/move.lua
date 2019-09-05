@@ -1,3 +1,4 @@
+local constants = require("constants")
 local detmath = require("lib.detmath")
 
 -- These are defined below as here it's less confusing to read the returned functions first
@@ -74,14 +75,97 @@ function move.selfAccelerate(entity, will, dt)
 	end
 end
 
+local queryFilter, getObjects, moveObjects
+local activeCube, activeWorld
+local queryBaseX, queryBaseY, queryBaseZ, queryBaseW, queryBaseH, queryBaseD
 function move.collide(entity, bumpWorld, dt)
+	-- These things are handled in the collision response
 	entity.grounded = false
 	entity.nextVx, entity.nextVy, entity.nextVz = entity.vx, entity.vy, entity.vz
-	local x, y, z = bumpWorld:getCube(entity)
-	local goalX = x + entity.vx * dt
-	local goalY = y + entity.vy * dt
-	local goalZ = z + entity.vz * dt
-	entity.nextX, entity.nextY, entity.nextZ = bumpWorld:check(entity, goalX, goalY, goalZ, filter)
+	
+	
+	local x, y, z, w, h, d = bumpWorld:getCube(entity)
+	
+	local entityMoveX = entity.vx * dt
+	local entityMoveY = entity.vy * dt
+	local entityMoveZ = entity.vz * dt
+	
+	local goalX = x + entityMoveX
+	local goalY = y + entityMoveY
+	local goalZ = z + entityMoveZ
+	
+	-- Query for world wrap
+	queryBaseX, queryBaseY, queryBaseZ = x+math.min(entityMoveX,0), y+math.min(entityMoveY,0), z+math.min(entityMoveZ,0)
+	queryBaseW, queryBaseH, queryBaseD = w+math.abs(entityMoveX), h+math.abs(entityMoveY), d+math.abs(entityMoveZ)
+	
+	activeCube = entity -- For the filter
+	activeWorld = bumpWorld -- For the get/move functions
+	
+	local queryPX, lenQueryPX = getObjects(1, 0)
+	local queryNX, lenQueryNX = getObjects(-1, 0)
+	local queryPZ, lenQueryPZ = getObjects(0, 1)
+	local queryNZ, lenQueryNZ = getObjects(0, -1)
+	local queryPXZ, lenQueryPXZ = getObjects(1, 1)
+	local queryNXZ, lenQueryNXZ = getObjects(-1, -1)
+	
+	if queryPX then moveObjects(queryPX, lenQueryPX, -1, 0) end
+	if queryNX then moveObjects(queryNX, lenQueryNX, 1, 0) end
+	if queryPZ then moveObjects(queryPZ, lenQueryPZ, 0, -1) end
+	if queryNZ then moveObjects(queryNZ, lenQueryNZ, 0, 1) end
+	if queryPXZ then moveObjects(queryPXZ, lenQueryPXZ, -1, -1) end
+	if queryNXZ then moveObjects(queryNXZ, lenQueryNXZ, 1, 1) end
+	
+	local nextX, nextY, nextZ = bumpWorld:check(entity, goalX, goalY, goalZ, filter)
+	entity.preModuloX, entity.preModuloZ = nextX, nextZ
+	entity.nextX, entity.nextY, entity.nextZ = nextX % worldWidthMetres, nextY, nextZ % worldDepthMetres
+	
+	if queryPX then moveObjects(queryPX, lenQueryPX, 1, 0) end
+	if queryNX then moveObjects(queryNX, lenQueryNX, -1, 0) end
+	if queryPZ then moveObjects(queryPZ, lenQueryPZ, 0, 1) end
+	if queryNZ then moveObjects(queryNZ, lenQueryNZ, 0, -1) end
+	if queryPXZ then moveObjects(queryPXZ, lenQueryPXZ, 1, 1) end
+	if queryNXZ then moveObjects(queryNXZ, lenQueryNXZ, -1, -1) end
+end
+
+function queryFilter(item)
+	return item ~= activeCube
+end
+function getObjects(xdir, zdir)
+	local xo, zo = xdir * worldWidthMetres, zdir * worldDepthMetres
+	local queryX, queryY, queryZ, queryW, queryH, queryD =
+		queryBaseX+xo, queryBaseY, queryBaseZ+zo, queryBaseW, queryBaseH, queryBaseD
+	if queryX < worldWidthMetres and 0 < queryX + queryW and queryZ < worldDepthMetres and 0 < queryZ + queryD then
+		queryW, queryD = math.min(queryW, worldWidthMetres - queryX), math.min(queryD, worldDepthMetres - queryZ)
+		queryX, queryZ = math.max(queryX, 0), math.max(queryZ, 0)
+		return activeWorld:queryCube(queryX, queryY, queryZ, queryW, queryH, queryD, queryFilter)
+	end
+end
+function moveObjects(items, len, xdir, zdir)
+	-- assert(len == #items)
+	local xo, zo = xdir * worldWidthMetres, zdir * worldDepthMetres
+	for i = 1, len do
+		local item = items[i]
+		local itemX, itemY, itemZ = activeWorld:getCube(item)
+		activeWorld:update(item, itemX+xo, itemY, itemZ+zo)
+	end
+end
+
+function move.finalise(bumpWorld, entity)
+	bumpWorld:update(entity, entity.nextX, entity.nextY, entity.nextZ)
+	local nextVx, nextVy, nextVz = entity.nextVx, entity.nextVy, entity.nextVz
+	if entity.grounded then
+		nextVy = math.abs(nextVy) > constants.velocitySnap and nextVy or 0 -- snap y velocity to avoid excessive bouncing
+	end
+	local speed = math.sqrt(nextVx ^ 2 + nextVy ^ 2 + nextVz ^ 2)
+	if speed > constants.maxSpeed then
+		nextVx, nextVy, nextVz =
+			nextVx / speed * constants.maxSpeed,
+			nextVy / speed * constants.maxSpeed,
+			nextVz / speed * constants.maxSpeed
+	end
+	entity.vx, entity.vy, entity.vz = nextVx, nextVy, nextVz
+	
+	entity.nextX, entity.nextY, entity.nextZ, entity.nextVx, entity.nextVy, entity.nextVz = nil
 end
 
 -- Abstractions and the like

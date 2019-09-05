@@ -75,4 +75,6 @@ constants.vertexFormat = {
 	{"VertexNormal", "float", 3},
 }
 
+constants.maxSpeed = 30 -- Mostly a safety feature for world wrap
+
 return constants

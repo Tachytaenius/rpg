@@ -44,6 +44,12 @@ function love.load(args)
 	settings("load")
 	assets("load")
 	
+	worldWidth, worldHeight, worldDepth = 20, 16, 18 -- TEMP: HACK: TODO: HELLO WE ARE GLOBALS NO NO NO BAD REEEE
+	worldWidthMetres, worldHeightMetres, worldDepthMetres =
+		worldWidth * constants.chunkWidth * constants.blockWidth,
+		worldWidth * constants.chunkHeight * constants.blockHeight,
+		worldWidth * constants.chunkDepth * constants.blockDepth
+	
 	scene.init()
 	
 	love.graphics.setFont(assets.ui.font.value)
@@ -60,12 +66,12 @@ function love.load(args)
 			gravityAmount = 9.8,
 			gravityMaxFallSpeed = 50
 		}
-		local testmanPlayer = newEntity(world, "testman", 4, 9, 4, 1)
+		-- goble (HACK)
+		testmanPlayer = newEntity(world, "testman", 0, 90, 0, 1)
 		-- scene.entitiesToDraw:add(testmanPlayer)
-		local testmanCreep = newEntity(world, "testman", 4, 9, 5, "creep")
+		testmanCreep = newEntity(world, "testman", 1, 9, 1, "creep")
 		scene.entitiesToDraw:add(testmanCreep)
 		scene.cameraEntity = testmanPlayer
-		worldWidth, worldHeight, worldDepth = 25, 1, 25 -- TODO: HELLO I AM A GLOBAL NO NO NO BAD REEEE
 		for x = 0, worldWidth - 1 do
 			local chunksX = {}
 			world.chunks[x] = chunksX
@@ -95,6 +101,16 @@ function love.load(args)
 		error("Go away, this isn't done yet!")
 	else
 		error("Invalid first argument: " .. args[1])
+	end
+	
+	do -- Check safety of world wrapping (which is only on x and z)
+		local maxMovementPerFixedUpdate = constants.maxSpeed * constants.tickWorth
+		for entityName, entity in pairs(registry.entities) do
+			local errMsg = entityName .. "'s diameter is too big for the world's width/depth and the maximum movement per tick (constants.maxSpeed * constants.tickWorth)"
+			assert(entity.diameter + maxMovementPerFixedUpdate <= worldWidth, errMsg)
+			-- assert(entity.height + maxMovementPerFixedUpdate <= worldHeight) -- We don't wrap on the y axis
+			assert(entity.diameter + maxMovementPerFixedUpdate <= worldDepth, errMsg)
+		end
 	end
 	
 	mdx, mdy = 0, 0
@@ -230,17 +246,17 @@ function love.fixedUpdate(dt)
 			-- Attacks and such go here
 		end
 		
+		local bumpWorld = world.bumpWorld
+		
 		for i = 1, world.entities.size do
-			move.collide(world.entities:get(i), world.bumpWorld, dt)
+			move.collide(world.entities:get(i), bumpWorld, dt)
 		end
 		
 		for i = 1, world.entities.size do
 			local entity = world.entities:get(i)
-			world.bumpWorld:update(entity, entity.nextX, entity.nextY, entity.nextZ)
-			entity.vx, entity.vy, entity.vz, entity.nextVx, entity.nextVy, entity.nextVz, entity.nextX, entity.nextY, entity.nextZ =
-				entity.nextVx, entity.nextVy, entity.nextVz
-			-- snap y velocity
-			entity.vy = math.abs(entity.vy) > constants.velocitySnap and entity.vy or 0
+			
+			-- nextX --> x etc
+			move.finalise(bumpWorld, entity)
 		end
 		
 		-- TODO push apart entities that're in the same place and use random (in a deterministic order) in the resolutions on their ambiguities
@@ -252,7 +268,6 @@ end
 -- The following function is based on the MIT licensed code here: https://gist.github.com/Positive07/5e80f03cabd069087930d569c148241c
 -- Copyright (c) 2019 Arvid Gerstmann, Jake Besworth, Max, Pablo Mayobre, LÖVE Developers, Henry Fleminger Thomson
 
-require("timedebugger")
 local delta = 0 -- For mousemoved
 function love.run()
 	love.load(love.arg.parseGameArguments(arg))
@@ -330,16 +345,30 @@ end
 -- TEMP
 function love.keypressed(k)
 	if k == "j" then
-		local x, y, z, w, h, d = world.bumpWorld:getCube(testman)
+		local x, y, z, w, h, d = world.bumpWorld:getCube(testmanPlayer)
 		x, y, z = x+w/2, y+h/2, z+d/2
 		x, y, z = math.floor(x/constants.blockWidth), math.floor(y/constants.blockHeight), math.floor(z/constants.blockDepth)
 		local cx, cy, cz = math.floor(x/constants.chunkWidth), math.floor(y/constants.chunkHeight), math.floor(z/constants.chunkDepth)
-		-- pcall(function()
+		pcall(function()
 			local chunk = world.chunks[cx][cy][cz]
 			local column = chunk.terrain[x%constants.chunkWidth][z%constants.chunkDepth]
 			column.columnTable[y%constants.chunkHeight+1] = string.char(1)
 			column:updateString()
 			chunk:updateMesh()
-		-- end)
+		end)
+	elseif k == "c" then
+		scene.entitiesToDraw:remove(testmanCreep)
+		if not scene.entitiesToDraw:has(testmanPlayer) then scene.entitiesToDraw:add(testmanPlayer) end
+		scene.cameraEntity = testmanCreep
+		testmanPlayer.controller = nil
+		testmanCreep.controller = 1
+	elseif k == "p" then
+		scene.entitiesToDraw:remove(testmanPlayer)
+		if not scene.entitiesToDraw:has(testmanCreep) then scene.entitiesToDraw:add(testmanCreep) end
+		scene.cameraEntity = testmanPlayer
+		testmanPlayer.controller = 1
+		testmanCreep.controller = "creep"
+	elseif k == "e" then
+		
 	end
 end

@@ -1,4 +1,5 @@
 local constants = require("constants")
+local detmath = require("lib.detmath")
 local bw, bh, bd = constants.blockWidth, constants.blockHeight, constants.blockDepth
 local cw, ch, cd = constants.chunkWidth, constants.chunkHeight, constants.chunkDepth
 
@@ -9,7 +10,7 @@ local terrainMetatable = {
 	end
 }
 
-local smoothRandom, chaoticRandom, updateString
+local smoothRandom2D, smoothRandom3D, chaoticRandom, updateString
 local generateTree
 
 local function generate(cx, cy, cz, bumpWorld, seed)
@@ -28,7 +29,11 @@ local function generate(cx, cy, cz, bumpWorld, seed)
 			
 			local blockX = bw * (ox + x)
 			local blockZ = bd * (oz + z)
-			local terrainHeight = bh * (10+4*smoothRandom(--[[seed, but => 2 args turns love.math.noise perlin, do not want]] blockX/16, blockZ/16))
+			local noise = smoothRandom2D(seed, blockX, blockZ, 20, 20) * 8
+			noise = noise + smoothRandom2D(seed, blockX, blockZ, 15, 15) * 4
+			noise = noise + smoothRandom2D(seed, blockX, blockZ, 10, 10) * 2
+			noise = noise + smoothRandom2D(seed, blockX, blockZ, 5, 5)
+			local terrainHeight = bh * (10+4*noise)
 			for y = 0, ch - 1 do
 				local blockY = bh * (oy + y)
 				if blockY <= terrainHeight then
@@ -65,9 +70,14 @@ local function generate(cx, cy, cz, bumpWorld, seed)
 	return setmetatable(terrain, terrainMetatable)
 end
 
-function smoothRandom(chaotic, ...)
-	-- TODO
-	return love.math.noise(chaotic, ...)
+function smoothRandom2D(chaotic, x, z, w, d)
+	local dx, dz = worldWidthMetres / w, worldDepthMetres / d
+	local s, t = (x / w) / dx, (z / d) / dz
+	local nx = detmath.cos(s*detmath.tau)*dx/detmath.tau
+	local ny = detmath.cos(t*detmath.tau)*dz/detmath.tau
+	local nz = detmath.sin(s*detmath.tau)*dx/detmath.tau
+	local nw = detmath.sin(t*detmath.tau)*dz/detmath.tau
+	return love.math.noise(nx, ny, nz, nw)
 end
 
 -- it's *all* chaos here, but the world's seed will usually be put in to completely change what the other values do
@@ -87,7 +97,7 @@ function generateTree(terrain, ox, oy, oz, trunkX, trunkZ)
 	
 	local blockX = bw * (ox + trunkX)
 	local blockZ = bd * (oz + trunkZ)
-	local terrainHeightInMetresAtTrunk = bh * (10+4*smoothRandom(--[[seed, but => 2 args turns love.math.noise perlin, do not want]] blockX/16, blockZ/16)) -- TODO: From cached information?
+	local terrainHeightInMetresAtTrunk = bh * (10+4*smoothRandom2D(seed, blockX, blockZ, 8, 8)) -- TODO: From cached information?
 	
 	-- TODO: abort if obstructed (requires not to write to table unless sure not gonna abort)
 	for x = math.max(trunkX, 0), math.min(trunkX + treeDiameter, cw) - 1 do

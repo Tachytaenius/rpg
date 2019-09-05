@@ -5,6 +5,7 @@ local deepCopy
 local function newEntity(world, type, x, y, z, controller)
 	local ret = {
 		controller = controller,
+		preModuloX = 0, preModuloZ = 0,
 		theta = 0, preModuloTheta = 0,
 		phi = 0, preModuloPhi = 0,
 		vx = 0, vy = 0, vz = 0, vtheta = 0, vphi = 0

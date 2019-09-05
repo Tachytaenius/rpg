@@ -13,6 +13,8 @@ local shadowMapSetup, shadowMap
 local lightCanvas
 local dummy -- For using light shader
 
+local chunkTransforms, chunkTransformInverses
+
 function scene.init()
 	dummy = love.graphics.newImage(love.image.newImageData(1, 1))
 	
@@ -51,6 +53,20 @@ function scene.init()
 	scene.chunksToDraw = list.new()
 	scene.entitiesToDraw = list.new()
 	scene.camera = {near = 0.0001, far = 30}
+	
+	local xstrs = {[-1] = "nx", [0] = "x", [1] = "px"}
+	local zstrs = {[-1] = "nz", [0] = "z", [1] = "pz"}
+	chunkTransforms, chunkTransformInverses = {}, {}
+	for x = -1, 1 do
+		for z = -1, 1 do
+			local name = xstrs[x] .. zstrs[z]
+			local transform = cpml.mat4.identity()
+			transform:translate(transform, cpml.vec3(worldWidthMetres * x, 0, worldDepthMetres * z))
+			chunkTransforms[name] = transform:transpose(transform)
+			local inverse = cpml.mat4.invert(cpml.mat4.new(), transform)
+			chunkTransformInverses[name] = inverse:transpose(inverse)
+		end
+	end
 end
 
 local getCameraTransform, renderGBuffer, sendGBufferToLightingShader, finishingTouches
@@ -107,19 +123,21 @@ function renderObjects(world)
 	end
 	
 	local currentShader = love.graphics.getShader()
-	local chunkTransform = cpml.mat4.identity()
-	currentShader:send("modelMatrix", chunkTransform) -- or lack thereof
 	
 	-- Chunks
 	if currentShader == gBufferShader then
-		currentShader:send("modelMatrixInverse", chunkTransform)
 		gBufferShader:send("surfaceMap", assets.terrain.surfaceMap.value)
 		gBufferShader:send("albedoMap", assets.terrain.albedoMap.value)
 		gBufferShader:send("materialMap", assets.terrain.materialMap.value)
 	end
 	for i = 1, scene.chunksToDraw.size do
-		local mesh = scene.chunksToDraw:get(i).mesh
+		local chunk = scene.chunksToDraw:get(i)
+		local mesh = chunk.mesh
 		if mesh then
+			currentShader:send("modelMatrix", chunkTransforms[chunk.transformType])
+			if currentShader == gBufferShader then
+				currentShader:send("modelMatrixInverse", chunkTransformInverses[chunk.transformType])
+			end
 			love.graphics.draw(mesh, cx, cy)
 		end
 	end
@@ -206,9 +224,9 @@ local function getEntitySpatials(bumpWorld, entity, lerp)
 	x, y, z, w, h, d = bumpWorld:getCube(entity)
 	if lerp then
 		x, y, z, w, h, d, theta, phi =
-			(1 - lerp) * entity.px + lerp * x,
+			(1 - lerp) * entity.px + lerp * entity.preModuloX,
 			(1 - lerp) * entity.py + lerp * y,
-			(1 - lerp) * entity.pz + lerp * z,
+			(1 - lerp) * entity.pz + lerp * entity.preModuloZ,
 			(1 - lerp) * entity.pw + lerp * w,
 			(1 - lerp) * entity.ph + lerp * h,
 			(1 - lerp) * entity.pd + lerp * d,
@@ -225,21 +243,7 @@ end
 function scene.setTransforms(world, lerp)
 	local bumpWorld = world.bumpWorld
 	local entitiesToDraw = scene.entitiesToDraw
-	
-	for i = 1, entitiesToDraw.size do
-		local entity = entitiesToDraw:get(i)
-		local model = entity.model
-		
-		if model then
-			local x, y, z, w, h, d, theta, phi = getEntitySpatials(bumpWorld, entity, lerp)
-			
-			local transform = cpml.mat4.identity()
-			transform:translate(transform, cpml.vec3(x+w/2, y+entity.eyeHeight, z+d/2))
-			transform:rotate(transform, -theta - math.pi, cpml.vec3.unit_y)
-			transform:rotate(transform, phi, cpml.vec3.unit_x)
-			model.transform = transform:transpose(transform)
-		end
-	end
+	local chunksToDraw = scene.chunksToDraw
 	
 	if scene.cameraEntity then
 		local x, y, z, w, h, d, theta, phi = getEntitySpatials(bumpWorld, scene.cameraEntity, lerp)
@@ -249,6 +253,65 @@ function scene.setTransforms(world, lerp)
 		scene.camera.fov = scene.cameraEntity.fov
 		scene.camera.pos = cpml.vec3(x + w / 2, y + scene.cameraEntity.eyeHeight, z + d / 2)
 		scene.camera.angle = cpml.vec3(phi, theta, 0)
+	end
+	
+	local scpx, scpz, scf = scene.camera.pos.x, scene.camera.pos.z, scene.camera.far
+	for i = 1, entitiesToDraw.size do
+		local entity = entitiesToDraw:get(i)
+		local model = entity.model
+		
+		if model then
+			local x, y, z, w, h, d, theta, phi = getEntitySpatials(bumpWorld, entity, lerp)
+			
+			-- TODO: Multiple parts? (Vertex groups and shaders?)
+			local wo2, do2 = w/2, d/2
+			local tx, ty, tz = x+wo2, y+entity.eyeHeight, z+do2
+			
+			-- TODO: Add a safety assertion for entity vision distances against diameters
+			
+			if tx - (scpx - worldWidthMetres) - wo2 <= scf then
+				tx = tx + worldWidthMetres
+			elseif scpx + worldWidthMetres - tx - wo2 <= scf then
+				tx = tx - worldWidthMetres
+			end
+			if tz - (scpz - worldDepthMetres) - do2 <= scf then
+				tz = tz + worldDepthMetres
+			elseif scpz + worldDepthMetres - tz - do2 <= scf then
+				tz = tz - worldDepthMetres
+			end
+			
+			local transform = cpml.mat4.identity()
+			transform:translate(transform, cpml.vec3(tx, ty, tz))
+			transform:rotate(transform, -theta - math.pi, cpml.vec3.unit_y)
+			transform:rotate(transform, phi, cpml.vec3.unit_x)
+			model.transform = transform:transpose(transform)
+		end
+	end
+	
+	local w, d = constants.chunkWidth * constants.blockWidth, constants.chunkDepth * constants.blockDepth
+	local wo2, do2 = w/2, d/2
+	for i = 1, chunksToDraw.size do
+		local chunk = chunksToDraw:get(i)
+		local mesh = chunk.mesh
+		
+		if mesh then
+			local cx, cz = chunk.x*w+wo2, chunk.z*d+do2
+			if cx - (scpx - worldWidthMetres) - wo2 <= scf then
+				transformType = "pxz"
+			elseif scpx + worldWidthMetres - cx - wo2 <= scf then
+				transformType = "nxz"
+			else
+				transformType = "xz"
+			end
+			
+			if cz - (scpz - worldDepthMetres) - do2 <= scf then
+				transformType = transformType == "pxz" and "pxpz" or transformType == "nxz" and "nxpz" or "xpz"
+			elseif scpz + worldDepthMetres - cz - do2 <= scf then
+				transformType = transformType == "pxz" and "pxnz" or transformType == "nxz" and "nxnz" or "xnz"
+			end
+			
+			chunk.transformType = transformType
+		end
 	end
 end
 

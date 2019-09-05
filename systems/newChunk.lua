@@ -32,12 +32,12 @@ local function newChunk(x, y, z, chunks, bumpWorld, seed)
 		updateMesh = updateMesh
 	}
 	
-	local pxNeighbour = get(get(get(chunks, x + 1), y), z)
-	local nxNeighbour = get(get(get(chunks, x - 1), y), z)
+	local pxNeighbour = get(get(get(chunks, (x + 1) % worldWidth), y), z % worldDepth)
+	local nxNeighbour = get(get(get(chunks, (x - 1) % worldWidth), y), z % worldDepth)
 	local pyNeighbour = get(get(get(chunks, x), y + 1), z)
 	local nyNeighbour = get(get(get(chunks, x), y - 1), z)
-	local pzNeighbour = get(get(get(chunks, x), y), z + 1)
-	local nzNeighbour = get(get(get(chunks, x), y), z - 1)
+	local pzNeighbour = get(get(get(chunks, x % worldWidth), y), (z + 1) % worldDepth)
+	local nzNeighbour = get(get(get(chunks, x % worldWidth), y), (z - 1) % worldDepth)
 	
 	ret.pxNeighbour = pxNeighbour
 	ret.nxNeighbour = nxNeighbour
@@ -98,19 +98,14 @@ function updateMesh(chunk)
 				if canDraw(tb) then
 					local us, vs = 1/16, 1/16
 					
-					local texx, texy
-					if tb == 2 then
-						texx, texy = 0, 1
-					elseif tb == 1 then
-						texx, texy = 0, 2
-					elseif tb == 3 then
-						texx, texy = 1, 0
-					elseif tb == 4 then
-						texx, texy = 1, 2
-					end
+					-- dont worry, this horrible magic number crap has always been a TODO. the registry is the solution
+					local texx, texy  if tb == 2 then  texx, texy = 0, 1  elseif tb == 1 then  texx, texy = 0, 2  elseif tb == 3 then  texx, texy  = 1, 0  elseif tb == 4 then  texx, texy = 1, 2  end  local u1, v1 = texx * us, texy * vs  local u2, v2 = u1 + us, v1 + vs
 					
-					local u1, v1 = texx * us, texy * vs
-					local u2, v2 = u1 + us, v1 + vs
+					local xBorder, yBorder, zBorder =
+						worldWidth * cw - 1,
+						worldHeight * ch - 1,
+						worldDepth * cd - 1
+					
 					if canDraw(tb, getBlock(x - 1, y, z)) then
 						addRect(verts, lenVerts, "nyz", tbx * bw, tby * bh, tbz * bd, bh, bd, u1, v1, u2, v2)
 						lenVerts = lenVerts + 6
@@ -127,27 +122,15 @@ function updateMesh(chunk)
 						addRect(verts, lenVerts, "pxy", tbx * bw, tby * bh, (tbz + 1) * bd, bw, bh, u1, v1, u2, v2)
 						lenVerts = lenVerts + 6
 					end
-					
-					if tb == 2 then
-						texx, texy = 2, 0
-						u1, v1 = texx * us, texy * vs
-						u2, v2 = u1 + us, v1 + vs
-					elseif tb == 4 then
-						texx, texy = 2, 2
-						u1, v1 = texx * us, texy * vs
-						u2, v2 = u1 + us, v1 + vs
-					end
-					if canDraw(tb, getBlock(x, y - 1, z)) then
+					if tby ~= 0 and canDraw(tb, getBlock(x, y - 1, z)) then
+						-- TEMP: Here's more of it
+						if tb == 2 then  texx, texy = 2, 0  u1, v1 = texx * us, texy * vs  u2, v2 = u1 + us, v1 + vs  elseif tb == 4 then  texx, texy = 2, 2  u1, v1 = texx * us, texy * vs  u2, v2 = u1 + us, v1 + vs  end
 						addRect(verts, lenVerts, "nxz", tbx * bw, tby * bh, tbz * bd, bw, bd, u1, v1, u2, v2)
 						lenVerts = lenVerts + 6
 					end
-					
-					if tb == 2 then
-						texx, texy = 0, 0
-						u1, v1 = texx * us, texy * vs
-						u2, v2 = u1 + us, v1 + vs
-					end
-					if canDraw(tb, getBlock(x, y + 1, z)) then
+					if tby ~= yBorder and canDraw(tb, getBlock(x, y + 1, z)) then
+						-- TEMP: Here's more of it
+						if tb == 2 then  texx, texy = 0, 0  u1, v1 = texx * us, texy * vs  u2, v2 = u1 + us, v1 + vs  end
 						addRect(verts, lenVerts, "pxz", tbx * bw, (tby + 1) * bh, tbz * bd, bw, bd, u1, v1, u2, v2)
 						lenVerts = lenVerts + 6
 					end
