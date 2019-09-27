@@ -44,7 +44,7 @@ function love.load(args)
 	settings("load")
 	assets("load")
 	
-	worldWidth, worldHeight, worldDepth = 20, 16, 18 -- TEMP: HACK: TODO: HELLO WE ARE GLOBALS NO NO NO BAD REEEE
+	worldWidth, worldHeight, worldDepth = 16, 16, 16 -- TEMP: HACK: TODO: HELLO WE ARE GLOBALS NO NO NO BAD REEEE
 	worldWidthMetres, worldHeightMetres, worldDepthMetres =
 		worldWidth * constants.chunkWidth * constants.blockWidth,
 		worldWidth * constants.chunkHeight * constants.blockHeight,
