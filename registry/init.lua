@@ -24,9 +24,11 @@ registry.terrainCount = #registry.terrainByIndex
 
 
 
-local entities = {}
-registry.entities = entities
-entities.testman = require("registry.entities.testman")
+registry.entities = {}
+registry.entities.testman = require("registry.entities.testman")
+
+registry.items = {}
+registry.items.sword = require("registry.items.sword")
 
 
 

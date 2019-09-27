@@ -87,6 +87,11 @@ return {
 		move = true,
 		turn = true,
 		
-		stepUpRange = 0.5 -- TODO
+		stepUpRange = 0.5, -- TODO
+		
+		inventoryCapacity = {
+			wield = true,
+			general = 3,
+		}
 	}
 }

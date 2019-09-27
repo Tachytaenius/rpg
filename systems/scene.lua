@@ -126,11 +126,9 @@ function renderObjects(world)
 	
 	-- Entities
 	for i = 1, scene.entitiesToDraw.size do
-		local model = scene.entitiesToDraw:get(i).model
+		local entity = scene.entitiesToDraw:get(i)
+		local model = entity.model
 		if model then
-			local currentShader = love.graphics.getShader()
-			
-			
 			currentShader:send("modelMatrix", model.transform)
 			
 			if currentShader == gBufferShader then
@@ -143,6 +141,26 @@ function renderObjects(world)
 			end
 			
 			love.graphics.draw(model.mesh.value, cx, cy)
+		end
+		
+		if entity.inventory then
+			local wielded = entity.inventory.wield
+			if wielded then
+				local model = assets.items[wielded]
+				
+				-- currentShader:send("modelMatrix", itemTransform)
+				
+				if currentShader == gBufferShader then
+					-- local inverse = cpml.mat4.invert(cpml.mat4.new(), itemTransform)
+					-- inverse = inverse:transpose(inverse)
+					-- currentShader:send("modelMatrixInverse", inverse)
+					gBufferShader:send("surfaceMap", model.surfaceMap.value)
+					gBufferShader:send("albedoMap", model.albedoMap.value)
+					gBufferShader:send("materialMap", model.materialMap.value)
+				end
+				
+				love.graphics.draw(model.mesh.value, cx, cy)
+			end
 		end
 	end
 end

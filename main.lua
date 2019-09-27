@@ -61,11 +61,12 @@ function love.load(args)
 			gravityMaxFallSpeed = 50
 		}
 		local testmanPlayer = newEntity(world, "testman", 4, 9, 4, 1)
-		-- scene.entitiesToDraw:add(testmanPlayer)
+		testmanPlayer.inventory.wield = "sword"
+		scene.entitiesToDraw:add(testmanPlayer)
 		local testmanCreep = newEntity(world, "testman", 4, 9, 5, "creep")
-		scene.entitiesToDraw:add(testmanCreep)
-		scene.cameraEntity = testmanPlayer
-		worldWidth, worldHeight, worldDepth = 25, 1, 25 -- TODO: HELLO I AM A GLOBAL NO NO NO BAD REEEE
+		-- scene.entitiesToDraw:add(testmanCreep)
+		scene.cameraEntity = testmanPlayer and testmanCreep
+		worldWidth, worldHeight, worldDepth = 4, 4, 4 -- TODO: HELLO I AM A GLOBAL NO NO NO BAD REEEE
 		for x = 0, worldWidth - 1 do
 			local chunksX = {}
 			world.chunks[x] = chunksX

@@ -27,8 +27,6 @@ local assets = {
 		end}
 	},
 	
-	
-	
 	entities = {
 		testman = {
 			mesh = {load = function(self)
@@ -42,6 +40,23 @@ local assets = {
 			end},
 			materialMap = {load = function(self)
 				self.value = makeMaterialMap("assets/images/entities/testman/metalness.png", "assets/images/entities/testman/roughness.png", "assets/images/entities/testman/fresnel.png")
+			end}
+		}
+	},
+	
+	items = {
+		sword = {
+			mesh = {load = function(self)
+				self.value = loadObj("assets/meshes/items/sword.obj")
+			end},
+			albedoMap = {load = function(self)
+				self.value = love.graphics.newImage("assets/images/items/sword/albedo.png")
+			end},
+			surfaceMap = {load = function(self)
+				self.value = makeSurfaceMap("assets/images/items/sword/normal.png", "assets/images/items/sword/ambientIllumination.png")
+			end},
+			materialMap = {load = function(self)
+				self.value = makeMaterialMap("assets/images/items/sword/metalness.png", "assets/images/items/sword/roughness.png", "assets/images/items/sword/fresnel.png")
 			end}
 		}
 	},
