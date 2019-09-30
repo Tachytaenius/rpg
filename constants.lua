@@ -52,17 +52,12 @@ constants.blockWidth = 0.5 -- metres
 constants.blockHeight = 0.5
 constants.blockDepth = 0.5
 
-constants.blockSize = 16 -- pixels
-
 constants.chunkWidth = 8 -- blocks
 constants.chunkHeight = 8
 constants.chunkDepth = 8
 
-constants.minChunkFeatures = 0
-constants.maxChunkFeatures = 2
-
 constants.velocitySnap = 0.001
-constants.bumpCellSize = 4
+constants.bumpCellSize = 4 -- metres
 
 constants.minShadowBias = 0.005
 constants.maxShadowBias = 0.05

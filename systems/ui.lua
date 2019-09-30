@@ -4,6 +4,7 @@ local constants, settings, assets =
 	require("constants"),
 	require("systems.settings"),
 	require("assets")
+local uis = require("uis")
 
 local ui = {}
 
@@ -16,9 +17,7 @@ function ui.construct(type)
 		mouseY = constants.height / 2
 	}
 	
-	if type == "plainPause" then
-		ui.current.causesPause = true
-	end
+	uis[type].construct(ui.current)
 end
 
 function ui.destroy()
@@ -32,15 +31,8 @@ function ui.update()
 	
 	suit.updateMouse(ui.current.mouseX, ui.current.mouseY, input.didCommand("uiPrimary"))
 	
-	if ui.current.type == "plainPause" then
-		suit.layout:reset(constants.width / 3, constants.height / 3, 4)
-		if suit.Button("Resume", suit.layout:row(constants.width / 3, assets.ui.font.value:getHeight() + 3)).hit then
-			ui.destroy()
-		end
-		if suit.Button("Quit", suit.layout:row()).hit then
-			love.event.quit()
-		end
-	end
+	local destroy = uis[ui.current.type].update(ui.current)
+	if destroy then ui.destroy() end
 end
 
 function ui.mouse(dx, dy)
