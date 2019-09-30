@@ -4,7 +4,7 @@ local constants, settings, assets =
 	require("constants"),
 	require("systems.settings"),
 	require("assets")
-local uis = require("uis")
+local uis = require("fornamein")("uis.", "plainPause")
 
 local ui = {}
 

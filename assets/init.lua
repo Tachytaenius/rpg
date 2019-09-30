@@ -12,7 +12,23 @@ local function newMeshLoader(location)
 	return asset
 end
 
-local makeSurfaceMap
+local makeSurfaceMap, makeMaterialMap
+local function newContent(name, category)
+	return {
+		mesh = {load = function(self)
+			self.value = loadObj("assets/meshes/" .. category .. "/" .. name .. ".obj")
+		end},
+		albedoMap = {load = function(self)
+			self.value = love.graphics.newImage("assets/images/" .. category .. "/" .. name .. "/albedo.png")
+		end},
+		surfaceMap = {load = function(self)
+			self.value = makeSurfaceMap("assets/images/" .. category .. "/" .. name .. "/normal.png", "assets/images/" .. category .. "/" .. name .. "/ambientIllumination.png")
+		end},
+		materialMap = {load = function(self)
+			self.value = makeMaterialMap("assets/images/" .. category .. "/" .. name .. "/metalness.png", "assets/images/" .. category .. "/" .. name .. "/roughness.png", "assets/images/" .. category .. "/" .. name .. "/fresnel.png")
+		end}
+	}
+end
 
 local assets = {
 	terrain = {
@@ -28,37 +44,11 @@ local assets = {
 	},
 	
 	entities = {
-		testman = {
-			mesh = {load = function(self)
-				self.value = loadObj("assets/meshes/entities/testman.obj")
-			end},
-			albedoMap = {load = function(self)
-				self.value = love.graphics.newImage("assets/images/entities/testman/albedo.png")
-			end},
-			surfaceMap = {load = function(self)
-				self.value = makeSurfaceMap("assets/images/entities/testman/normal.png", "assets/images/entities/testman/ambientIllumination.png")
-			end},
-			materialMap = {load = function(self)
-				self.value = makeMaterialMap("assets/images/entities/testman/metalness.png", "assets/images/entities/testman/roughness.png", "assets/images/entities/testman/fresnel.png")
-			end}
-		}
+		testman = newContent("testman", "entities")
 	},
 	
 	items = {
-		sword = {
-			mesh = {load = function(self)
-				self.value = loadObj("assets/meshes/items/sword.obj")
-			end},
-			albedoMap = {load = function(self)
-				self.value = love.graphics.newImage("assets/images/items/sword/albedo.png")
-			end},
-			surfaceMap = {load = function(self)
-				self.value = makeSurfaceMap("assets/images/items/sword/normal.png", "assets/images/items/sword/ambientIllumination.png")
-			end},
-			materialMap = {load = function(self)
-				self.value = makeMaterialMap("assets/images/items/sword/metalness.png", "assets/images/items/sword/roughness.png", "assets/images/items/sword/fresnel.png")
-			end}
-		}
+		sword = newContent("sword", "items")
 	},
 	
 	

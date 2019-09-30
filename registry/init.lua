@@ -1,35 +1,36 @@
+local forNameIn = require("fornamein")
+
+local terrainNames = [[
+	soil
+]]
+local entityNames = [[
+	testman
+]]
+local itemNames = [[
+	sword
+]]
+
 local registry = {}
-
-local terrainNames = {
-	"soil"
-}
-
-registry.terrainByIndex = {}
-registry.terrainByName = {}
-for index, name in ipairs(terrainNames) do
-	local newBlock = {index = index, name = name}
-	for line in love.filesystem.lines("registry/terrain/" .. name) do
-		if line[1] ~= "'" then -- Minimal comment functionality
-			for word in line:gmatch("%S+") do
-				
+registry.terrainByName, registry.terrainByIndex, registry.terrainCount = forNameIn("registry/terrain/", terrainNames,
+	function(path)
+		local ret = {}
+		for line in love.filesystem.lines(path) do
+			local iterator = line:gmatch("%S+")
+			local propertyName = iterator()
+			local propertyType = iterator()
+			if propertyType == "!" then -- Boolean
+				ret[propertyName] = true
+			elseif propertyType == "#" then -- Number
+				local propertyValue = iterator()
+				ret[propertyName] = tonumber(iterator())
+			elseif word2 == "$" then -- String
+				local propertyValue = iterator()
+				ret[propertyName] = propertyValue
 			end
 		end
+		return ret
 	end
-	registry.terrainByIndex[index] = newBlock
-	registry.terrainByName[name] = newBlock
-end
-
-registry.terrainCount = #registry.terrainByIndex
-
-
-
-
-registry.entities = {}
-registry.entities.testman = require("registry.entities.testman")
-
-registry.items = {}
-registry.items.sword = require("registry.items.sword")
-
-
-
+)
+registry.entities = forNameIn("registry.entities.", entityNames)
+registry.items = forNameIn("registry.items.", itemNames)
 return registry

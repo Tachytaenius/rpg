@@ -23,8 +23,8 @@ local function generate(cx, cy, cz, bumpWorld, seed)
 		
 		for z = 0, cd - 1 do
 			local columnTable = {} -- contains block ids (as strings)
-			terrainX[z] = {columnTable = columnTable, updateString = updateString}
 			local boxes = {}
+			terrainX[z] = {columnTable = columnTable, boxes = boxes, updateString = updateString}
 			
 			local blockX = bw * (ox + x)
 			local blockZ = bd * (oz + z)
@@ -52,7 +52,7 @@ local function generate(cx, cy, cz, bumpWorld, seed)
 	end
 	
 	if cx % 3 == 1 and cz % 3 == 1 then
-		generateTree(terrain, ox, oy, oz, cw / 2, cd / 2)
+		generateTree(terrain, ox, oy, oz, cw / 2, cd / 2, bumpWorld)
 	end
 	
 	for x = 0, cw - 1 do
@@ -80,7 +80,7 @@ function updateString(self)
 	self.columnString = table.concat(self.columnTable)
 end
 
-function generateTree(terrain, ox, oy, oz, trunkX, trunkZ)
+function generateTree(terrain, ox, oy, oz, trunkX, trunkZ, bumpWorld)
 	-- TODO
 	local treeDiameter = 1
 	local treeHeight = 4
@@ -93,11 +93,19 @@ function generateTree(terrain, ox, oy, oz, trunkX, trunkZ)
 	for x = math.max(trunkX, 0), math.min(trunkX + treeDiameter, cw) - 1 do
 		local terrainX = terrain[x]
 		for z = math.max(trunkZ, 0), math.min(trunkZ + treeDiameter, cd) - 1 do
-			local columnTable = terrainX[z].columnTable
+			local terrainXZ = terrainX[z]
+			local columnTable = terrainXZ.columnTable
+			local boxes = terrainXZ.boxes
 			for y = 0, ch - 1 do
 				local blockYInMetres = bh * (oy + y)
 				if blockYInMetres >= terrainHeightInMetresAtTrunk and blockYInMetres - terrainHeightInMetresAtTrunk <= treeHeight then
 					columnTable[y + 1] = string.char(4)
+					local box = boxes[y]
+					if not box then
+						box = {}
+						boxes[y] = box
+					end
+					bumpWorld:add(box, blockX, blockYInMetres, blockZ, bw, bh, bd)
 				end
 			end
 		end
