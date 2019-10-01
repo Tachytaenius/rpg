@@ -64,6 +64,8 @@ constants.maxShadowBias = 0.05
 constants.lightNearPlane = 0.001
 constants.shadowMapSize = 1024
 
+constants.blockTextureSize = 16 -- pixels
+
 constants.vertexFormat = {
 	{"VertexPosition", "float", 3},
 	{"VertexTexCoord", "float", 2},

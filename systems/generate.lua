@@ -52,7 +52,7 @@ local function generate(cx, cy, cz, bumpWorld, seed)
 	end
 	
 	if cx % 3 == 1 and cz % 3 == 1 then
-		generateTree(terrain, ox, oy, oz, cw / 2, cd / 2, bumpWorld)
+		-- generateTree(terrain, ox, oy, oz, cw / 2, cd / 2, bumpWorld)
 	end
 	
 	for x = 0, cw - 1 do

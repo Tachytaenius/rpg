@@ -1,8 +1,8 @@
-local constants, assets, settings, registry =
+local constants, registry, settings, assets =
 	require("constants"),
-	require("assets"),
+	require("registry"), -- NOTE: registry must be required before assets because of terrainClone hack
 	require("systems.settings"),
-	require("registry")
+	require("assets")
 
 local suit, bump, list, detmath, cpml =
 	require("lib.suit"),

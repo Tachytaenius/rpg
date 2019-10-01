@@ -1,6 +1,6 @@
+local registry = require("registry")
 local assets = require("assets")
 local constants = require("constants")
-
 local generate = require("systems.generate")
 
 local bw, bh, bd = constants.blockWidth, constants.blockHeight, constants.blockDepth
@@ -60,6 +60,7 @@ end
 
 local addRect
 
+local u1s, v1s, u2s, v2s = assets.terrain.u1s, assets.terrain.v1s, assets.terrain.u2s, assets.terrain.v2s
 function updateMesh(chunk)
 	-- Neighbouring chunks also influence face visibility
 	local function getBlock(x, y, z)
@@ -96,21 +97,9 @@ function updateMesh(chunk)
 				local tb = string.byte(chunk.terrain[x][z].columnString, y + 1)
 				local tbx, tby, tbz = chunkX * cw + x, chunkY * ch + y, chunkZ * cd + z
 				if canDraw(tb) then
-					local us, vs = 1/16, 1/16
+					local name = registry.terrainByIndex[tb].name
+					local u1, v1, u2, v2 = u1s[name], v1s[name], u2s[name], v2s[name]
 					
-					local texx, texy
-					if tb == 2 then
-						texx, texy = 0, 1
-					elseif tb == 1 then
-						texx, texy = 0, 2
-					elseif tb == 3 then
-						texx, texy = 1, 0
-					elseif tb == 4 then
-						texx, texy = 1, 2
-					end
-					
-					local u1, v1 = texx * us, texy * vs
-					local u2, v2 = u1 + us, v1 + vs
 					if canDraw(tb, getBlock(x - 1, y, z)) then
 						addRect(verts, lenVerts, "nyz", tbx * bw, tby * bh, tbz * bd, bh, bd, u1, v1, u2, v2)
 						lenVerts = lenVerts + 6
@@ -127,25 +116,9 @@ function updateMesh(chunk)
 						addRect(verts, lenVerts, "pxy", tbx * bw, tby * bh, (tbz + 1) * bd, bw, bh, u1, v1, u2, v2)
 						lenVerts = lenVerts + 6
 					end
-					
-					if tb == 2 then
-						texx, texy = 2, 0
-						u1, v1 = texx * us, texy * vs
-						u2, v2 = u1 + us, v1 + vs
-					elseif tb == 4 then
-						texx, texy = 2, 2
-						u1, v1 = texx * us, texy * vs
-						u2, v2 = u1 + us, v1 + vs
-					end
 					if canDraw(tb, getBlock(x, y - 1, z)) then
 						addRect(verts, lenVerts, "nxz", tbx * bw, tby * bh, tbz * bd, bw, bd, u1, v1, u2, v2)
 						lenVerts = lenVerts + 6
-					end
-					
-					if tb == 2 then
-						texx, texy = 0, 0
-						u1, v1 = texx * us, texy * vs
-						u2, v2 = u1 + us, v1 + vs
 					end
 					if canDraw(tb, getBlock(x, y + 1, z)) then
 						addRect(verts, lenVerts, "pxz", tbx * bw, (tby + 1) * bh, tbz * bd, bw, bd, u1, v1, u2, v2)

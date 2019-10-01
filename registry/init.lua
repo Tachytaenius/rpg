@@ -1,7 +1,7 @@
 local forNameIn = require("fornamein")
 
 local terrainNames = [[
-	soil
+	soil grass
 ]]
 local entityNames = [[
 	testman
@@ -12,8 +12,8 @@ local itemNames = [[
 
 local registry = {}
 registry.terrainByName, registry.terrainByIndex, registry.terrainCount = forNameIn("registry/terrain/", terrainNames,
-	function(path)
-		local ret = {}
+	function(path, name, index)
+		local ret = {name = name, index = index}
 		for line in love.filesystem.lines(path) do
 			local iterator = line:gmatch("%S+")
 			local propertyName = iterator()
@@ -29,8 +29,13 @@ registry.terrainByName, registry.terrainByIndex, registry.terrainCount = forName
 			end
 		end
 		return ret
-	end
+	end,
+	nil, true
 )
+local terrainClone = require("registry.terrainClone")
+terrainClone.terrainByName, terrainClone.terrainByIndex, terrainClone.terrainCount = registry.terrainByName, registry.terrainByIndex, registry.terrainCount
+
 registry.entities = forNameIn("registry.entities.", entityNames)
 registry.items = forNameIn("registry.items.", itemNames)
+
 return registry
