@@ -33,7 +33,7 @@ end
 
 local assets = {
 	terrain = {
-		-- load is set at the bottom. it's too complex
+		-- load is set at the bottom. it's too big
 		u1s = {}, v1s = {}, u2s = {}, v2s = {}, albedoMap = {}, surfaceMap = {}, materialMap = {}
 	},
 	
@@ -209,16 +209,6 @@ function assets.terrain.load()
 		love.graphics.draw(love.graphics.newImage("assets/images/terrain/" .. blockName .. "/albedo.png"), x, y)
 	end
 	love.graphics.setCanvas()
-	
-	
-	
-	local ts = require("systems.takeScreenshot")
-	ts(metalnessAtlas)
-	ts(roughnessAtlas)
-	ts(fresnelAtlas)
-	ts(normalAtlas)
-	ts(ambientIlluminationAtlas)
-	ts(albedoAtlas)
 	
 	local metalnessAtlas = metalnessAtlas:newImageData()
 	local roughnessAtlas = roughnessAtlas:newImageData()
