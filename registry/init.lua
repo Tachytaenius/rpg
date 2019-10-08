@@ -11,29 +11,19 @@ local itemNames = [[
 ]]
 
 local registry = {}
-registry.terrainByName, registry.terrainByIndex, registry.terrainCount = forNameIn("registry/terrain/", terrainNames,
+registry.terrainByName, registry.terrainByIndex = forNameIn("registry.terrain.", terrainNames,
 	function(path, name, index)
-		local ret = {name = name, index = index}
-		for line in love.filesystem.lines(path) do
-			local iterator = line:gmatch("%S+")
-			local propertyName = iterator()
-			local propertyType = iterator()
-			if propertyType == "!" then -- Boolean
-				ret[propertyName] = true
-			elseif propertyType == "#" then -- Number
-				local propertyValue = iterator()
-				ret[propertyName] = tonumber(iterator())
-			elseif word2 == "$" then -- String
-				local propertyValue = iterator()
-				ret[propertyName] = propertyValue
-			end
-		end
+		local ret = require(path)
+		ret.name = name
+		ret.index = index
 		return ret
 	end,
 	nil, true
 )
+local air = {name = "air", index = 0, invisible = true}
+registry.terrainByName.air, registry.terrainByIndex[0] = air, air
 local terrainClone = require("registry.terrainClone")
-terrainClone.terrainByName, terrainClone.terrainByIndex, terrainClone.terrainCount = registry.terrainByName, registry.terrainByIndex, registry.terrainCount
+terrainClone.terrainByName, terrainClone.terrainByIndex = registry.terrainByName, registry.terrainByIndex
 
 registry.entities = forNameIn("registry.entities.", entityNames)
 registry.items = forNameIn("registry.items.", itemNames)
