@@ -31,10 +31,19 @@ local function newContent(name, category)
 	}
 end
 
+local numTextures = 0 -- For terrain
+for _, block in ipairs(registryTerrain.terrainByIndex) do
+	numTextures = numTextures + (block.textures and #block.textures or (block.invisible and 0 or 1))
+end
+
 local assets = {
 	terrain = {
 		-- load is set at the bottom. it's too big
-		u1s = {}, v1s = {}, u2s = {}, v2s = {}, albedoMap = {}, surfaceMap = {}, materialMap = {}
+		u1s = {}, v1s = {}, u2s = {}, v2s = {}, albedoMap = {}, surfaceMap = {}, materialMap = {},
+		constants = {
+			blockTextureSize = 16, -- pixels
+			numTextures = numTextures
+		}
 	},
 	
 	entities = {
@@ -171,15 +180,11 @@ function makeMaterialMap(metalnessPath, roughnessPath, fresnelPath, alreadyData)
 	return love.graphics.newImage(materialMapData)
 end
 
-local numTextures = 0
-for _, block in ipairs(registryTerrain.terrainByIndex) do
-	numTextures = numTextures + (block.textures and #block.textures or (block.invisible and 0 or 1))
-end
 local drawTextureToAtlasses
 local u1s, v1s, u2s, v2s, materialMap, surfaceMap, albedoMap = assets.terrain.u1s, assets.terrain.v1s, assets.terrain.u2s, assets.terrain.v2s, assets.terrain.materialMap, assets.terrain.surfaceMap, assets.terrain.albedoMap
 
 function assets.terrain.load()
-	local atlasWidth, atlasHeight = constants.blockTextureSize, constants.blockTextureSize * numTextures
+	local atlasWidth, atlasHeight = assets.terrain.constants.blockTextureSize, assets.terrain.constants.blockTextureSize * numTextures
 	
 	local metalnessAtlas = love.graphics.newCanvas(atlasWidth, atlasHeight)
 	local roughnessAtlas = love.graphics.newCanvas(atlasWidth, atlasHeight)
@@ -188,17 +193,21 @@ function assets.terrain.load()
 	local ambientIlluminationAtlas = love.graphics.newCanvas(atlasWidth, atlasHeight)
 	local albedoAtlas = love.graphics.newCanvas(atlasWidth, atlasHeight)
 	
+	local texturesSeen = 0
 	for i, block in ipairs(registryTerrain.terrainByIndex) do
+		-- no need for local i = i
+		i = i + texturesSeen
 		local blockName = block.name
-		local x, y = 0, (i - 1) * constants.blockTextureSize
+		local x, y = 0, (i - 1) * assets.terrain.constants.blockTextureSize
 		u1s[blockName] = x / atlasWidth
 		v1s[blockName] = y / atlasHeight
-		u2s[blockName] = (x + constants.blockTextureSize) / atlasWidth
-		v2s[blockName] = (y + constants.blockTextureSize) / atlasHeight
+		u2s[blockName] = (x + assets.terrain.constants.blockTextureSize) / atlasWidth
+		v2s[blockName] = (y + assets.terrain.constants.blockTextureSize) / atlasHeight
 		
 		if block.textures then
+			texturesSeen = texturesSeen + #block.textures
 			for j, texture in ipairs(block.textures) do
-				drawTextureToAtlasses(blockName .. "/" .. texture, metalnessAtlas, roughnessAtlas, fresnelAtlas, normalAtlas, ambientIlluminationAtlas, albedoAtlas, x, y + constants.blockTextureSize * (j - 1))
+				drawTextureToAtlasses(blockName .. "/" .. texture, metalnessAtlas, roughnessAtlas, fresnelAtlas, normalAtlas, ambientIlluminationAtlas, albedoAtlas, x, y + assets.terrain.constants.blockTextureSize * (j - 1))
 			end
 		else
 			drawTextureToAtlasses(blockName, metalnessAtlas, roughnessAtlas, fresnelAtlas, normalAtlas, ambientIlluminationAtlas, albedoAtlas, x, y)
