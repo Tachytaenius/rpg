@@ -41,7 +41,10 @@ local function generate(cx, cy, cz, bumpWorld, seed)
 						block = 3
 					end
 					columnTable[y + 1] = string.char(block)
-					local box = {}
+					local box = {
+						x = x, y = y, z = z,
+						cx = cx, cy = cy, cz = cz
+					}
 					boxes[y] = box
 					bumpWorld:add(box, blockX, blockY, blockZ, bw, bh, bd)
 				else

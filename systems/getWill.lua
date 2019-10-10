@@ -21,6 +21,14 @@ local function getWill(mdx, mdy)
 	will.targetVelocityThetaMultiplier = mdx
 	will.targetVelocityPhiMultiplier = mdy
 	
+	if input.didCommand("destroy") then
+		will.destroy = true
+	end
+	
+	if input.didCommand("build") then
+		will.build = true
+	end
+	
 	return will
 end
 

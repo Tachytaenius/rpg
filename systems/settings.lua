@@ -76,7 +76,10 @@ local template = {
 				strafeRight = "d",
 				jump = "space",
 				run = "lshift",
-				sneak = "lctrl"
+				sneak = "lctrl",
+				
+				destroy = 1,
+				build = 2
 			}
 		end
 	end

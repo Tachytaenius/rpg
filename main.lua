@@ -11,7 +11,7 @@ local suit, bump, list, detmath, cpml =
 	require("lib.detmath"),
 	require("lib.cpml")
 
-local think, getWill, move, newChunk, scene, input, ui, takeScreenshot, newEntity =
+local think, getWill, move, newChunk, scene, input, ui, takeScreenshot, newEntity, modifyChunk =
 	require("systems.think"),
 	require("systems.getWill"),
 	require("systems.move"),
@@ -20,7 +20,8 @@ local think, getWill, move, newChunk, scene, input, ui, takeScreenshot, newEntit
 	require("systems.input"),
 	require("systems.ui"),
 	require("systems.takeScreenshot"),
-	require("systems.newEntity")
+	require("systems.newEntity"),
+	require("systems.modifyChunk")
 
 local outlineShader
 local infoCanvas, contentCanvas
@@ -66,7 +67,7 @@ function love.load(args)
 		local testmanCreep = newEntity(world, "testman", 4, 9, 5, "creep")
 		scene.entitiesToDraw:add(testmanCreep)
 		scene.cameraEntity = testmanPlayer
-		worldWidth, worldHeight, worldDepth = 16, 4, 16 -- TODO: HELLO I AM A GLOBAL NO NO NO BAD REEEE
+		worldWidth, worldHeight, worldDepth = 4, 3, 4 -- TODO: HELLO I AM A GLOBAL NO NO NO BAD REEEE
 		for x = 0, worldWidth - 1 do
 			local chunksX = {}
 			world.chunks[x] = chunksX
@@ -129,6 +130,10 @@ function love.draw(lerp)
 		suit.draw()
 		love.graphics.setColor(settings.mouse.cursorColour)
 		love.graphics.draw(assets.ui.cursor.value, math.floor(ui.current.mouseX), math.floor(ui.current.mouseY), settings.mouse.cursorRotation * detmath.tau / 4)
+	else
+		-- draw HUD
+		local chw, chh = assets.ui.crosshairs.value:getDimensions()
+		love.graphics.draw(assets.ui.crosshairs.value, (constants.width - chw) / 2, (constants.height - chh) / 2)
 	end
 	love.graphics.setColor(1, 1, 1)
 	
@@ -211,6 +216,7 @@ function love.frameUpdate(dt)
 	input.stepRawCommands()
 end
 
+-- TODO: Move tick routine out.
 function love.fixedUpdate(dt)
 	if not (ui.current and ui.current.causesPause) then
 		for i = 1, world.entities.size do
@@ -226,9 +232,9 @@ function love.fixedUpdate(dt)
 					will = think(entity, world)
 				end
 				move.selfAccelerate(entity, will, dt)
+				modifyChunk.interactBlocks(entity, will, world)
 			end
 			move.gravitate(entity, world.gravityAmount, world.gravityMaxFallSpeed, dt)
-			-- Attacks and such go here
 		end
 		
 		for i = 1, world.entities.size do

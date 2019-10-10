@@ -92,6 +92,8 @@ return {
 		inventoryCapacity = {
 			wield = true,
 			general = 3,
-		}
+		},
+		
+		reach = 2 -- metres
 	}
 }

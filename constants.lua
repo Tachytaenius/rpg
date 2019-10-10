@@ -42,7 +42,10 @@ constants.commands = {
 	strafeRight = "whileDown",
 	jump = "whileDown",
 	run = "whileDown",
-	sneak = "whileDown"
+	sneak = "whileDown",
+	
+	destroy = "onPress",
+	build = "onPress"
 }
 
 constants.infoWidth = 200
@@ -67,7 +70,7 @@ constants.shadowMapSize = 1024
 constants.vertexFormat = {
 	{"VertexPosition", "float", 3},
 	{"VertexTexCoord", "float", 2},
-	{"VertexNormal", "float", 3},
+	{"VertexNormal", "float", 3}
 }
 
 return constants

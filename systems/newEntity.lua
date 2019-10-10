@@ -8,6 +8,8 @@ local function newEntity(world, type, x, y, z, controller)
 		theta = 0, preModuloTheta = 0,
 		phi = 0, preModuloPhi = 0,
 		vx = 0, vy = 0, vz = 0, vtheta = 0, vphi = 0,
+		
+		isEntity = true -- TEMP: For bump queries to discern tile tables (HACK; TEMP) from entities. Could have done isTile but that's less memory efficient.
 	}
 	
 	local base = registry.entities[type]

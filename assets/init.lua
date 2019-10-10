@@ -56,7 +56,8 @@ local assets = {
 	
 	ui = {
 		cursor = {load = function(self) self.value = love.graphics.newImage("assets/images/ui/cursor.png") end},
-		font = {load = function(self) self.value = love.graphics.newImageFont("assets/images/ui/font.png", constants.fontString) end}
+		font = {load = function(self) self.value = love.graphics.newImageFont("assets/images/ui/font.png", constants.fontString) end},
+		crosshairs = {load = function(self) self.value = love.graphics.newImage("assets/images/ui/crosshairs.png") end}
 	}
 }
 
