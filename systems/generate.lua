@@ -1,31 +1,21 @@
 local constants = require("constants")
+local registry = require("registry")
+local blockHash = require("systems.blockHash")
+local bhEncodeForBump = blockHash.encodeForBump
+local bhEncodeForTerrainString = blockHash.encodeForTerrainString
 local bw, bh, bd = constants.blockWidth, constants.blockHeight, constants.blockDepth
 local cw, ch, cd = constants.chunkWidth, constants.chunkHeight, constants.chunkDepth
-
-local terrainMetatable = {
-	__call = function(t, x, y, z)
-		x, y, z = x % cw, y % ch, z % cd
-		return string.sub(t[x][z], y + 1)
-	end
-}
 
 local smoothRandom, chaoticRandom, updateString
 local generateTree
 
-local function generate(cx, cy, cz, bumpWorld, seed)
+local function generate(cx, cy, cz, chunkId, bumpWorld, seed)
 	local ox, oy, oz = cw * cx, ch * cy, cd * cz
 	
-	local terrain = {}
+	local tmpTable = {}
 	
 	for x = 0, cw - 1 do
-		local terrainX = {}
-		terrain[x] = terrainX
-		
 		for z = 0, cd - 1 do
-			local columnTable = {} -- contains block ids (as strings)
-			local boxes = {}
-			terrainX[z] = {columnTable = columnTable, boxes = boxes, updateString = updateString}
-			
 			local blockX = bw * (ox + x)
 			local blockZ = bd * (oz + z)
 			local terrainHeight = bh * (10+4*smoothRandom(--[[seed, but => 2 args turns love.math.noise perlin, do not want]] blockX/16, blockZ/16))
@@ -34,38 +24,28 @@ local function generate(cx, cy, cz, bumpWorld, seed)
 				if blockY <= terrainHeight then
 					local block
 					if blockY + bh > terrainHeight then
-						block = 2
+						block = registry.terrainByName.grass
 					elseif blockY + terrainHeight >= 2 then
-						block = 1
+						block = registry.terrainByName.soil
 					else
-						block = 3
+						block = registry.terrainByName.stone
 					end
-					columnTable[y + 1] = string.char(block)
-					local box = {
-						x = x, y = y, z = z,
-						cx = cx, cy = cy, cz = cz
-					}
-					boxes[y] = box
-					bumpWorld:add(box, blockX, blockY, blockZ, bw, bh, bd)
+					tmpTable[bhEncodeForTerrainString(x, y, z)] = string.char(block.index)
+					
+					local hash = bhEncodeForBump(x, y, z, chunkId)
+					bumpWorld:add(hash, blockX, blockY, blockZ, bw, bh, bd)
 				else
-					columnTable[y + 1] = string.char(0)
+					tmpTable[bhEncodeForTerrainString(x, y, z)] = string.char(0) -- air
 				end
 			end
 		end
 	end
 	
-	if cx % 3 == 1 and cz % 3 == 1 then
+	if cx % 3 == 1 and cz % 3 == 1 then -- arbitrary tree-generating pattern
 		-- generateTree(terrain, ox, oy, oz, cw / 2, cd / 2, bumpWorld)
 	end
-	
-	for x = 0, cw - 1 do
-		local terrainX = terrain[x]
-		for z = 0, cd - 1 do
-			terrainX[z]:updateString()
-		end
-	end
-	
-	return setmetatable(terrain, terrainMetatable)
+	 
+	return table.concat(tmpTable)
 end
 
 function smoothRandom(chaotic, ...)

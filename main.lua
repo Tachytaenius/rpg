@@ -57,6 +57,8 @@ function love.load(args)
 			bumpWorld = bump.newWorld(constants.bumpCellSize),
 			entities = list.new(),
 			chunks = {},
+			chunksById = {},
+			nextChunkId = 0,
 			lights = list.new():add({isDirectional = true, angle={0.4, 0.8, 0.6}, colour={1, 1, 1}, strength = 3}),
 			gravityAmount = 9.8,
 			gravityMaxFallSpeed = 50
@@ -75,21 +77,18 @@ function love.load(args)
 				local chunksY = {}
 				chunksX[y] = chunksY
 				for z = 0, worldDepth - 1 do
-					local newChunk = newChunk(x, y, z, world.chunks, world.bumpWorld, world.seed)
+					local newChunk = newChunk(x, y, z, world.chunks, world.bumpWorld, world.seed, world.nextChunkId)
+					world.chunksById[world.nextChunkId] = newChunk
+					world.nextChunkId = world.nextChunkId + 1
 					chunksY[z] = newChunk
 				end
 			end
 		end
-		for x = 0, worldWidth - 1 do
-			local chunkX = world.chunks[x]
-			for y = 0, worldHeight - 1 do
-				local chunkY = chunkX[y]
-				for z = 0, worldDepth - 1 do
-					local chunk = chunkY[z]
-					chunk:updateMesh()
-					scene.chunksToDraw:add(chunk)
-				end
-			end
+		
+		-- There's no point iterating the coords way if you're not going to use them.
+		for _, chunk in pairs(world.chunksById) do
+			chunk:updateMesh()
+			scene.chunksToDraw:add(chunk)
 		end
 		
 	elseif args[1] == "load" then

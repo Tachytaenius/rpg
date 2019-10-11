@@ -1,3 +1,5 @@
+-- getInfoAboutItemsTouchedBySegment was changed to add normals by Tachytaenius
+
 --[[
 
 bump-3dpd 1.0.0
@@ -588,12 +590,12 @@ local function getInfoAboutItemsTouchedBySegment(self, x1,y1,z1, x2,y2,z2, filte
           cube = self.cubes[item]
           x, y, z, w, h, d = cube.x, cube.y, cube.z, cube.w, cube.h, cube.d
 
-          ti1, ti2 = cube_getSegmentIntersectionIndices(x,y,z,w,h,d, x1,y1,z1, x2,y2,z2, 0, 1)
+          ti1, ti2, nx, ny, nz = cube_getSegmentIntersectionIndices(x,y,z,w,h,d, x1,y1,z1, x2,y2,z2, 0, 1)
           if ti1 and ((0 < ti1 and ti1 < 1) or (0 < ti2 and ti2 < 1)) then
             -- the sorting is according to the t of an infinite line, not the segment
             tii0, tii1 = cube_getSegmentIntersectionIndices(x,y,z,w,h,d, x1,y1,z1, x2,y2,z2, -math.huge, math.huge)
             itemInfoLen = itemInfoLen + 1
-            itemInfo[itemInfoLen] = {item = item, ti1 = ti1, ti2 = ti2, weight = min(tii0, tii1)}
+            itemInfo[itemInfoLen] = {item = item, ti1 = ti1, ti2 = ti2, weight = min(tii0, tii1), normal = {x = nx, y = ny, z = nz}}
           end
         end
       end

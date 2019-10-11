@@ -1,15 +1,27 @@
 local detmath = require("lib.detmath")
+local blockHash = require("systems.blockHash")
+local bhDecode = blockHash.decode
+local bhEncodeForTerrainString = blockHash.encodeForTerrainString
 
 local modifyChunk = {}
 
 local function tilesOnlyFilter(item)
-	return not item.isEntity
+	return type(item) == "number"
+end
+
+local replaceChar
+do
+	local tbl, concat, sub = {}, table.concat, string.sub
+	function replaceChar(str, index, chr)
+		tbl[1], tbl[2], tbl[3] = sub(str, 1, index - 1), chr, sub(str, index + 1)
+		return concat(tbl)
+	end
 end
 
 function modifyChunk.interactBlocks(entity, will, world)
 	if not will then return end
 	if will.destroy then
-		-- TODO: Iteration order mustn't matter-- ie only destroy a block after all potential hits are done. (NOTE: Achievable by passing out a table of blocks that got destroyed etc. Just cba atm. I will, though.)
+		-- TODO: Iteration order mustn't matter-- ie only destroy a block after all potential hits are done. (NOTE: Achievable by passing out a table of blocks that got destroyed etc. Just cba atm. I will, though. In doing this I can also optimise some of the changes and remeshings.)
 		local x, y, z, w, h, d = world.bumpWorld:getCube(entity)
 		local cx, cy, cz = x + w / 2, y + entity.eyeHeight, z + d / 2
 		local dx, dy, dz =
@@ -19,13 +31,14 @@ function modifyChunk.interactBlocks(entity, will, world)
 		local tiles, len = world.bumpWorld:querySegment(cx, cy, cz, cx + dx, cy + dy, cz + dz, tilesOnlyFilter)
 		
 		if len > 0 then
-			 -- TODO why the what the what who why what how ugh? remake the hacky and disgusting chunk format
-			local chunk = world.chunks[tiles[1].cx][tiles[1].cy][tiles[1].cz]
-			local column = chunk.terrain[tiles[1].x][tiles[1].z]
-			column.columnTable[tiles[1].y + 1] = string.char(0) -- air
-			world.bumpWorld:remove(column.boxes[tiles[1].y])
-			column:updateString()
+			local hash = tiles[1] -- Ie tiles is a sequence of hashes of tiles and, uh, yeah. We're breaking the first one.
+			local x, y, z, chunkId = bhDecode(hash)
+			local chunk = world.chunksById[chunkId]
+			local index = bhEncodeForTerrainString(x, y, z)
+			chunk.terrain = replaceChar(chunk.terrain, index, string.char(0)) -- air
+			world.bumpWorld:remove(hash)
 			chunk:updateMesh()
+			
 			if chunk.pxNeighbour then chunk.pxNeighbour:updateMesh() end
 			if chunk.nxNeighbour then chunk.nxNeighbour:updateMesh() end
 			if chunk.pyNeighbour then chunk.pyNeighbour:updateMesh() end
