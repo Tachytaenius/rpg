@@ -5,9 +5,10 @@ local bhEncodeForTerrainString = blockHash.encodeForTerrainString
 
 local modifyChunk = {}
 
-local function tilesOnlyFilter(item)
-	return type(item) == "number"
-end
+-- %s cuts out all embedded zeros, so air is destroyed! %q doesn't, but it *totally* screws up everything else. Including how they are used, and cleaning that up would be even less efficient than what is in use, so... meh.
+-- local function replaceChar(s, i, chr)
+-- 	return string.format("%s%s%s", s:sub(1, i - 1), chr, s:sub(i + 1))
+-- end
 
 local replaceChar
 do
@@ -18,33 +19,41 @@ do
 	end
 end
 
-function modifyChunk.interactBlocks(entity, will, world)
+local function tilesOnlyFilter(item)
+	return type(item) == "number"
+end
+
+local function getRayParameters(entity, will, world)
+	local x, y, z, w, h, d = world.bumpWorld:getCube(entity)
+	local cx, cy, cz = x + w / 2, y + entity.eyeHeight, z + d / 2
+	local dx, dy, dz =
+		entity.abilities.reach * detmath.cos(entity.theta - detmath.tau / 4) * detmath.cos(entity.phi),
+		-entity.abilities.reach * detmath.sin(entity.phi),
+		entity.abilities.reach * detmath.sin(entity.theta - detmath.tau / 4) * detmath.cos(entity.phi)
+	return cx, cy, cz, cx + dx, cy + dy, cz + dz, tilesOnlyFilter
+end
+
+local function updateNeighbours(chunk, chunkUpdates)
+	if chunk.pxNeighbour then chunkUpdates[chunk.pxNeighbour] = chunkUpdates[chunk.pxNeighbour] or chunk.pxNeighbour.terrain end
+	if chunk.nxNeighbour then chunkUpdates[chunk.nxNeighbour] = chunkUpdates[chunk.nxNeighbour] or chunk.nxNeighbour.terrain end
+	if chunk.pyNeighbour then chunkUpdates[chunk.pyNeighbour] = chunkUpdates[chunk.pyNeighbour] or chunk.pyNeighbour.terrain end
+	if chunk.nyNeighbour then chunkUpdates[chunk.nyNeighbour] = chunkUpdates[chunk.nyNeighbour] or chunk.nyNeighbour.terrain end
+	if chunk.pzNeighbour then chunkUpdates[chunk.pzNeighbour] = chunkUpdates[chunk.pzNeighbour] or chunk.pzNeighbour.terrain end
+	if chunk.nzNeighbour then chunkUpdates[chunk.nzNeighbour] = chunkUpdates[chunk.nzNeighbour] or chunk.nzNeighbour.terrain end
+end
+
+function modifyChunk.interactBlocks(entity, will, world, chunkUpdates)
 	if not will then return end
 	if will.destroy then
-		-- TODO: Iteration order mustn't matter-- ie only destroy a block after all potential hits are done. (NOTE: Achievable by passing out a table of blocks that got destroyed etc. Just cba atm. I will, though. In doing this I can also optimise some of the changes and remeshings.)
-		local x, y, z, w, h, d = world.bumpWorld:getCube(entity)
-		local cx, cy, cz = x + w / 2, y + entity.eyeHeight, z + d / 2
-		local dx, dy, dz =
-			entity.abilities.reach * detmath.cos(entity.theta - detmath.tau / 4) * detmath.cos(entity.phi),
-			-entity.abilities.reach * detmath.sin(entity.phi),
-			entity.abilities.reach * detmath.sin(entity.theta - detmath.tau / 4) * detmath.cos(entity.phi)
-		local tiles, len = world.bumpWorld:querySegment(cx, cy, cz, cx + dx, cy + dy, cz + dz, tilesOnlyFilter)
-		
+		local tiles, len = world.bumpWorld:querySegment(getRayParameters(entity, will, world))
 		if len > 0 then
 			local hash = tiles[1] -- Ie tiles is a sequence of hashes of tiles and, uh, yeah. We're breaking the first one.
 			local x, y, z, chunkId = bhDecode(hash)
 			local chunk = world.chunksById[chunkId]
 			local index = bhEncodeForTerrainString(x, y, z)
-			chunk.terrain = replaceChar(chunk.terrain, index, string.char(0)) -- air
+			chunkUpdates[chunk] = replaceChar(chunkUpdates[chunk] or chunk.terrain, index, string.char(0))
 			world.bumpWorld:remove(hash)
-			chunk:updateMesh()
-			
-			if chunk.pxNeighbour then chunk.pxNeighbour:updateMesh() end
-			if chunk.nxNeighbour then chunk.nxNeighbour:updateMesh() end
-			if chunk.pyNeighbour then chunk.pyNeighbour:updateMesh() end
-			if chunk.nyNeighbour then chunk.nyNeighbour:updateMesh() end
-			if chunk.pzNeighbour then chunk.pzNeighbour:updateMesh() end
-			if chunk.nzNeighbour then chunk.nzNeighbour:updateMesh() end
+			updateNeighbours(chunk, chunkUpdates)
 		end
 	end
 end

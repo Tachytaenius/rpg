@@ -15,14 +15,6 @@ local template = {
 		vsync = function(try) if type(try) == "boolean" then return try else return true end end
 	},
 	
-	manualGarbageCollection = {
-		-- enable = function(try) if type(try) == "boolean" then return try else return true end end,
-		enable = function(try) return type(try) == "boolean" and try end, -- TODO: fix manual gc
-		maxSteps = function(try) return type(try) == "number" and try or 1000 end,
-		timeLimit = function(try) return type(try) == "number" and try or 1/600 end,
-		safetyMargin = function(try) return type(try) == "number" and try or 256 end -- In mibibytes
-	},
-	
 	mouse = {
 		divideByScale = function(try) if type(try) == "boolean" then return try else return true end end,
 		xSensitivity = function(try) return type(try) == "number" and try or 1 end,

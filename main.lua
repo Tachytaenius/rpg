@@ -218,6 +218,8 @@ end
 -- TODO: Move tick routine out.
 function love.fixedUpdate(dt)
 	if not (ui.current and ui.current.causesPause) then
+		local chunkUpdates = {}
+		
 		for i = 1, world.entities.size do
 			local entity = world.entities:get(i)
 			-- Back up previous fields for interpolation
@@ -231,7 +233,7 @@ function love.fixedUpdate(dt)
 					will = think(entity, world)
 				end
 				move.selfAccelerate(entity, will, dt)
-				modifyChunk.interactBlocks(entity, will, world)
+				modifyChunk.interactBlocks(entity, will, world, chunkUpdates)
 			end
 			move.gravitate(entity, world.gravityAmount, world.gravityMaxFallSpeed, dt)
 		end
@@ -251,6 +253,13 @@ function love.fixedUpdate(dt)
 		
 		-- TODO push apart entities that're in the same place and use random (in a deterministic order) in the resolutions on their ambiguities
 		
+		for chunk, newTerrain in pairs(chunkUpdates) do
+			chunk.terrain = newTerrain
+		end
+		for chunk, newTerrain in pairs(chunkUpdates) do
+			chunk:updateMesh()
+		end
+		
 		mdx, mdy = 0, 0
 	end
 end
@@ -258,7 +267,6 @@ end
 -- The following function is based on the MIT licensed code here: https://gist.github.com/Positive07/5e80f03cabd069087930d569c148241c
 -- Copyright (c) 2019 Arvid Gerstmann, Jake Besworth, Max, Pablo Mayobre, LÖVE Developers, Henry Fleminger Thomson
 
-require("timedebugger")
 local delta = 0 -- For mousemoved
 function love.run()
 	love.load(love.arg.parseGameArguments(arg))
@@ -295,26 +303,6 @@ function love.run()
 			love.graphics.present()
 		end
 		
-		-- TEMP: off in settings
-		if settings.manualGarbageCollection.enable then -- Garbage collection
-			local start = love.timer.getTime()
-			for _=1, settings.manualGarbageCollection.maxSteps do
-				if love.timer.getTime() - start > settings.manualGarbageCollection.timeLimit then break end
-				collectgarbage("step", 1)
-			end
-			
-			-- TODO
-			-- FIXME: collectgarbage("count") returns all memory in use, not just garbage?
-			-- I think it's to do with all the chunk meshes?
-			-- if collectgarbage("count") / 1024 > settings.manualGarbageCollection.safetyMargin then
-				-- collectgarbage("collect")
-			-- end
-			
-			collectgarbage("stop")
-		else
-			collectgarbage("restart")
-		end
-		
 		love.timer.sleep(0.001)
 	end
 end
@@ -331,21 +319,4 @@ end
 
 function love.quit()
 	
-end
-
--- TEMP
-function love.keypressed(k)
-	if k == "j" then
-		local x, y, z, w, h, d = world.bumpWorld:getCube(testman)
-		x, y, z = x+w/2, y+h/2, z+d/2
-		x, y, z = math.floor(x/constants.blockWidth), math.floor(y/constants.blockHeight), math.floor(z/constants.blockDepth)
-		local cx, cy, cz = math.floor(x/constants.chunkWidth), math.floor(y/constants.chunkHeight), math.floor(z/constants.chunkDepth)
-		-- pcall(function()
-			local chunk = world.chunks[cx][cy][cz]
-			local column = chunk.terrain[x%constants.chunkWidth][z%constants.chunkDepth]
-			column.columnTable[y%constants.chunkHeight+1] = string.char(1)
-			column:updateString()
-			chunk:updateMesh()
-		-- end)
-	end
 end
