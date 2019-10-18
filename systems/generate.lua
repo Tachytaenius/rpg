@@ -9,10 +9,9 @@ local cw, ch, cd = constants.chunkWidth, constants.chunkHeight, constants.chunkD
 local smoothRandom, chaoticRandom, updateString
 local generateTree
 
+local tmpTerrainTable, tmpMetadataTable = {}, {}
 local function generate(cx, cy, cz, chunkId, bumpWorld, seed)
 	local ox, oy, oz = cw * cx, ch * cy, cd * cz
-	
-	local tmpTable = {}
 	
 	for x = 0, cw - 1 do
 		for z = 0, cd - 1 do
@@ -20,6 +19,7 @@ local function generate(cx, cy, cz, chunkId, bumpWorld, seed)
 			local blockZ = bd * (oz + z)
 			local terrainHeight = bh * (10+4*smoothRandom(--[[seed, but => 2 args turns love.math.noise perlin, do not want]] blockX/16, blockZ/16))
 			for y = 0, ch - 1 do
+				local hash = bhEncodeForTerrainString(x, y, z)
 				local blockY = bh * (oy + y)
 				if blockY <= terrainHeight then
 					local block
@@ -30,13 +30,14 @@ local function generate(cx, cy, cz, chunkId, bumpWorld, seed)
 					else
 						block = registry.terrainByName.stone
 					end
-					tmpTable[bhEncodeForTerrainString(x, y, z)] = string.char(block.index)
+					tmpTerrainTable[hash] = string.char(block.index)
 					
 					local hash = bhEncodeForBump(x, y, z, chunkId)
 					bumpWorld:add(hash, blockX, blockY, blockZ, bw, bh, bd)
 				else
-					tmpTable[bhEncodeForTerrainString(x, y, z)] = string.char(0) -- air
+					tmpTerrainTable[hash] = string.char(0) -- air
 				end
+				tmpMetadataTable[hash] = love.math.random(0, 255)
 			end
 		end
 	end
@@ -45,7 +46,7 @@ local function generate(cx, cy, cz, chunkId, bumpWorld, seed)
 		-- generateTree(terrain, ox, oy, oz, cw / 2, cd / 2, bumpWorld)
 	end
 	 
-	return table.concat(tmpTable)
+	return table.concat(tmpTerrainTable), table.concat(tmpMetadataTable)
 end
 
 function smoothRandom(chaotic, ...)

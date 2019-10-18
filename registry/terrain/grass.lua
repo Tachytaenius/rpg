@@ -2,7 +2,7 @@ local registryTerrain = require("registry.terrainClone")
 
 return {
 	textures = {"top", "bottom", "sides"},
-	getTextureAtlasOffset = function(face, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn)
+	getTextureAtlasOffset = function(face, selfState, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn)
 		if face == "py" then
 			return 0 -- top
 		elseif face == "ny" then

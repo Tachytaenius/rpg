@@ -39,11 +39,12 @@ function scene.init()
 	lightingShader = love.graphics.newShader("shaders/lighting.glsl")
 	postShader = love.graphics.newShader("shaders/post.glsl")
 	
+	gBufferShader:send("damageOverlayVLength", 1 / assets.terrain.constants.numTextures)
 	lightingShader:send("nearPlane", constants.lightNearPlane) -- For getting values out of the shadow map depth buffer
 	lightingShader:send("windowSize", {constants.width, constants.height})
 	lightingShader:send("maximumBias", constants.maxShadowBias)
 	lightingShader:send("minimumBias", constants.minShadowBias)
-	-- TEMP: The magic numbers won't stay, I promise
+	-- TEMP: The magic numbers won't stay, I promise (solution: weather system)
 	postShader:send("skyColour", {0.3, 0.4, 0.5})
 	postShader:send("fogRadius", 25)
 	postShader:send("fogStart", 0.6)
@@ -112,7 +113,8 @@ function renderObjects(world)
 	
 	-- Chunks
 	if currentShader == gBufferShader then
-		currentShader:send("modelMatrixInverse", chunkTransform)
+		gBufferShader:send("modelMatrixInverse", chunkTransform)
+		gBufferShader:send("damageOverlays", true)
 		gBufferShader:send("surfaceMap", assets.terrain.surfaceMap.value)
 		gBufferShader:send("albedoMap", assets.terrain.albedoMap.value)
 		gBufferShader:send("materialMap", assets.terrain.materialMap.value)
@@ -122,6 +124,10 @@ function renderObjects(world)
 		if mesh then
 			love.graphics.draw(mesh, cx, cy)
 		end
+	end
+	
+	if currentShader == gBufferShader then
+		gBufferShader:send("damageOverlays", false)
 	end
 	
 	-- Entities
@@ -134,7 +140,7 @@ function renderObjects(world)
 			if currentShader == gBufferShader then
 				local inverse = cpml.mat4.invert(cpml.mat4.new(), model.transform)
 				inverse = inverse:transpose(inverse)
-				currentShader:send("modelMatrixInverse", inverse)
+				gBufferShader:send("modelMatrixInverse", inverse)
 				gBufferShader:send("surfaceMap", model.surfaceMap.value)
 				gBufferShader:send("albedoMap", model.albedoMap.value)
 				gBufferShader:send("materialMap", model.materialMap.value)

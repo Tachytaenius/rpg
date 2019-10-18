@@ -31,7 +31,7 @@ local function newContent(name, category)
 	}
 end
 
-local numTextures = 0 -- For terrain
+local numTextures = 4 -- For terrain. Starts at 4 to take damage steps into account
 for _, block in ipairs(registryTerrain.terrainByIndex) do
 	numTextures = numTextures + (block.textures and #block.textures or (block.invisible and 0 or 1))
 end
@@ -195,6 +195,12 @@ function assets.terrain.load()
 	local albedoAtlas = love.graphics.newCanvas(atlasWidth, atlasHeight)
 	
 	local texturesSeen = 0
+	for i = 0, 3 do -- 4 damage steps because 2 bits for damage in block metadata
+		-- no need for local i = i
+		local x, y = 0, (i - 1) * assets.terrain.constants.blockTextureSize
+		texturesSeen = texturesSeen + 1
+		drawTextureToAtlasses("damage/" .. i, metalnessAtlas, roughnessAtlas, fresnelAtlas, normalAtlas, ambientIlluminationAtlas, albedoAtlas, x, y)
+	end
 	for i, block in ipairs(registryTerrain.terrainByIndex) do
 		-- no need for local i = i
 		i = i + texturesSeen
