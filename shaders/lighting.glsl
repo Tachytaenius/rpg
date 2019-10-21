@@ -35,7 +35,7 @@ uniform vec3 viewPosition;
 
 uniform Image positionBuffer;
 uniform Image surfaceBuffer;
-uniform Image albedoBuffer;
+uniform Image diffuseBuffer;
 uniform Image materialBuffer;
 
 uniform bool pointLight; // or directional
@@ -66,7 +66,7 @@ vec4 effect(vec4 colour, Image image, vec2 textureCoords, vec2 windowCoords) {
 	
 	vec3 position = positionTexel.xyz;
 	vec3 normal = surfaceTexel.xyz;
-	vec3 albedo = Texel(albedoBuffer, textureCoords).rgb;
+	vec3 diffuse = Texel(diffuseBuffer, textureCoords).rgb;
 	
 	float metalness = materialTexel.r;
 	float roughness = materialTexel.g;
@@ -96,7 +96,7 @@ vec4 effect(vec4 colour, Image image, vec2 textureCoords, vec2 windowCoords) {
 			lightColour * lightStrength:
 		vec3(0.0);
 	
-	vec3 specularity = mix(vec3(0.04), albedo, metalness);
+	vec3 specularity = mix(vec3(0.04), diffuse, metalness);
 	
 	vec3 N = normal;
 	float NdL = max(dot(N, L), 0.0);
@@ -116,9 +116,9 @@ vec4 effect(vec4 colour, Image image, vec2 textureCoords, vec2 windowCoords) {
 	vec3 diffuseLight = diffref * radiance;
 	
 	vec3 result =
-		diffuseLight * mix(albedo, vec3(0.0), metalness) +
+		diffuseLight * mix(diffuse, vec3(0.0), metalness) +
 		reflectedLight +
-		(albedo * lightColour) * (ambientIllumination * ambience); // Brackets to help understanding, they're not necessary
+		(diffuse * lightColour) * (ambientIllumination * ambience); // Brackets to help understanding, they're not necessary
 	
 	return vec4(result, 1.0);
 }

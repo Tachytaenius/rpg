@@ -47,7 +47,7 @@ uniform bool damageOverlays;
 	
 	uniform vec3 viewPosition;
 	
-	uniform Image albedoMap;
+	uniform Image diffuseMap;
 	uniform Image materialMap;
 	uniform Image surfaceMap;
 	
@@ -58,20 +58,26 @@ uniform bool damageOverlays;
 		vec4 surfaceTexel = Texel(surfaceMap, textureCoords);
 		vec3 mapNormal = surfaceTexel.rgb;
 		float ambientIllumination = surfaceTexel.a;
-		vec4 albedoTexel = Texel(albedoMap, textureCoords);
+		vec4 diffuseTexel = Texel(diffuseMap, textureCoords);
 		vec4 materialTexel = Texel(materialMap, textureCoords);
 		
 		if (damageOverlays) {
 			vec2 damageCoords = vec2(textureCoords.s, mod(textureCoords.t, damageOverlayVLength) + damageOverlayVLength * damage);
-			vec4 damageAlbedo = Texel(albedoMap, damageCoords);
-			albedoTexel.rgb = mix(albedoTexel.rgb, damageAlbedo.rgb, damageAlbedo.a);
+			vec4 damageDiffuse = Texel(diffuseMap, damageCoords);
+			vec4 damageSurface = Texel(surfaceMap, damageCoords);
+			vec4 damageMaterial = Texel(materialMap, damageCoords); // Just *stored* in the material map.
+			float damageNormalAlpha = damageMaterial.r;
+			float damageAmbientIlluminationAlpha = damageMaterial.g;
+			diffuseTexel.rgb = mix(diffuseTexel.rgb, damageDiffuse.rgb, damageDiffuse.a);
+			mapNormal = mix(mapNormal, damageSurface.rgb, damageNormalAlpha);
+			ambientIllumination = mix(ambientIllumination, damageSurface.a, damageAmbientIlluminationAlpha);
 		}
 		
 		vec3 outNormal = perturbNormal(fragmentNormal, mapNormal * 2 - 1, textureCoords, normalize(viewPosition - fragmentPosition));
 		
 		love_Canvases[0] = vec4(fragmentPosition, 1);
 		love_Canvases[1] = vec4(outNormal, ambientIllumination);
-		love_Canvases[2] = albedoTexel;
+		love_Canvases[2] = diffuseTexel;
 		love_Canvases[3] = materialTexel;
 	}
 #endif

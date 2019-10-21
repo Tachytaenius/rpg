@@ -19,8 +19,8 @@ local function newContent(name, category)
 		mesh = {load = function(self)
 			self.value = loadObj("assets/meshes/" .. category .. "/" .. name .. ".obj")
 		end},
-		albedoMap = {load = function(self)
-			self.value = love.graphics.newImage("assets/images/" .. category .. "/" .. name .. "/albedo.png")
+		diffuseMap = {load = function(self)
+			self.value = love.graphics.newImage("assets/images/" .. category .. "/" .. name .. "/diffuse.png")
 		end},
 		surfaceMap = {load = function(self)
 			self.value = makeSurfaceMap("assets/images/" .. category .. "/" .. name .. "/normal.png", "assets/images/" .. category .. "/" .. name .. "/ambientIllumination.png")
@@ -39,7 +39,7 @@ end
 local assets = {
 	terrain = {
 		-- load is set at the bottom. it's too big
-		u1s = {}, v1s = {}, u2s = {}, v2s = {}, albedoMap = {}, surfaceMap = {}, materialMap = {},
+		u1s = {}, v1s = {}, u2s = {}, v2s = {}, diffuseMap = {}, surfaceMap = {}, materialMap = {},
 		constants = {
 			blockTextureSize = 16, -- pixels
 			numTextures = numTextures
@@ -182,7 +182,7 @@ function makeMaterialMap(metalnessPath, roughnessPath, fresnelPath, alreadyData)
 end
 
 local drawTextureToAtlasses
-local u1s, v1s, u2s, v2s, materialMap, surfaceMap, albedoMap = assets.terrain.u1s, assets.terrain.v1s, assets.terrain.u2s, assets.terrain.v2s, assets.terrain.materialMap, assets.terrain.surfaceMap, assets.terrain.albedoMap
+local u1s, v1s, u2s, v2s, materialMap, surfaceMap, diffuseMap = assets.terrain.u1s, assets.terrain.v1s, assets.terrain.u2s, assets.terrain.v2s, assets.terrain.materialMap, assets.terrain.surfaceMap, assets.terrain.diffuseMap
 
 function assets.terrain.load()
 	local atlasWidth, atlasHeight = assets.terrain.constants.blockTextureSize, assets.terrain.constants.blockTextureSize * numTextures
@@ -192,18 +192,16 @@ function assets.terrain.load()
 	local fresnelAtlas = love.graphics.newCanvas(atlasWidth, atlasHeight)
 	local normalAtlas = love.graphics.newCanvas(atlasWidth, atlasHeight)
 	local ambientIlluminationAtlas = love.graphics.newCanvas(atlasWidth, atlasHeight)
-	local albedoAtlas = love.graphics.newCanvas(atlasWidth, atlasHeight)
+	local diffuseAtlas = love.graphics.newCanvas(atlasWidth, atlasHeight)
 	
-	local texturesSeen = 0
-	for i = 0, 3 do -- 4 damage steps because 2 bits for damage in block metadata
-		-- no need for local i = i
-		local x, y = 0, (i - 1) * assets.terrain.constants.blockTextureSize
-		texturesSeen = texturesSeen + 1
-		drawTextureToAtlasses("damage/" .. i, metalnessAtlas, roughnessAtlas, fresnelAtlas, normalAtlas, ambientIlluminationAtlas, albedoAtlas, x, y)
+	for i = 1, 3 do -- 4 damage steps because 2 bits for damage in block metadata
+		local x, y = 0, i * assets.terrain.constants.blockTextureSize
+		drawTextureToAtlasses(x, y, "damage/" .. i, true, normalAtlas, ambientIlluminationAtlas, diffuseAtlas, metalnessAtlas, roughnessAtlas, fresnelAtlas)
 	end
+	local extraTexturesSeen = 0
 	for i, block in ipairs(registryTerrain.terrainByIndex) do
 		-- no need for local i = i
-		i = i + texturesSeen
+		i = i + extraTexturesSeen + 4 -- damage steps
 		local blockName = block.name
 		local x, y = 0, (i - 1) * assets.terrain.constants.blockTextureSize
 		u1s[blockName] = x / atlasWidth
@@ -212,12 +210,12 @@ function assets.terrain.load()
 		v2s[blockName] = (y + assets.terrain.constants.blockTextureSize) / atlasHeight
 		
 		if block.textures then
-			texturesSeen = texturesSeen + #block.textures
+			extraTexturesSeen = extraTexturesSeen + #block.textures
 			for j, texture in ipairs(block.textures) do
-				drawTextureToAtlasses(blockName .. "/" .. texture, metalnessAtlas, roughnessAtlas, fresnelAtlas, normalAtlas, ambientIlluminationAtlas, albedoAtlas, x, y + assets.terrain.constants.blockTextureSize * (j - 1))
+				drawTextureToAtlasses(x, y + assets.terrain.constants.blockTextureSize * (j - 1), blockName .. "/" .. texture, false, normalAtlas, ambientIlluminationAtlas, diffuseAtlas, metalnessAtlas, roughnessAtlas, fresnelAtlas)
 			end
 		else
-			drawTextureToAtlasses(blockName, metalnessAtlas, roughnessAtlas, fresnelAtlas, normalAtlas, ambientIlluminationAtlas, albedoAtlas, x, y)
+			drawTextureToAtlasses(x, y, blockName, false, normalAtlas, ambientIlluminationAtlas, diffuseAtlas, metalnessAtlas, roughnessAtlas, fresnelAtlas)
 		end
 	end
 	love.graphics.setCanvas()
@@ -227,27 +225,47 @@ function assets.terrain.load()
 	local fresnelAtlas = fresnelAtlas:newImageData()
 	local normalAtlas = normalAtlas:newImageData()
 	local ambientIlluminationAtlas = ambientIlluminationAtlas:newImageData()
-	local albedoAtlas = albedoAtlas:newImageData()
+	local diffuseAtlas = diffuseAtlas:newImageData()
 	
 	materialMap.value = makeMaterialMap(metalnessAtlas, roughnessAtlas, fresnelAtlas, true)
 	surfaceMap.value = makeSurfaceMap(normalAtlas, ambientIlluminationAtlas, true)
-	albedoMap.value = love.graphics.newImage(albedoAtlas)
+	diffuseMap.value = love.graphics.newImage(diffuseAtlas)
 end
 
-function drawTextureToAtlasses(location, ma, ra, fa, na, aia, aa, x, y)
+local drawAlphaShader = love.graphics.newShader[[
+	vec4 effect(vec4 colour, Image image, vec2 textureCoords, vec2 windowCoords) {
+		return vec4(vec3(Texel(image, textureCoords).a), 1);
+	}
+]]
+
+function drawTextureToAtlasses(x, y, location, isDamage, na, aia, aa, ma, ra, fa)
 	-- TODO: assert correct dimensions of each image
-	love.graphics.setCanvas(ma)
-	love.graphics.draw(love.graphics.newImage("assets/images/terrain/" .. location .. "/metalness.png"), x, y)
-	love.graphics.setCanvas(ra)
-	love.graphics.draw(love.graphics.newImage("assets/images/terrain/" .. location .. "/roughness.png"), x, y)
-	love.graphics.setCanvas(fa)
-	love.graphics.draw(love.graphics.newImage("assets/images/terrain/" .. location .. "/fresnel.png"), x, y)
+	local ni = love.graphics.newImage("assets/images/terrain/" .. location .. "/normal.png")
+	local aii = love.graphics.newImage("assets/images/terrain/" .. location .. "/ambientIllumination.png")
+	local ai = love.graphics.newImage("assets/images/terrain/" .. location .. "/diffuse.png")
+	
 	love.graphics.setCanvas(na)
-	love.graphics.draw(love.graphics.newImage("assets/images/terrain/" .. location .. "/normal.png"), x, y)
+	love.graphics.draw(ni, x, y)
 	love.graphics.setCanvas(aia)
-	love.graphics.draw(love.graphics.newImage("assets/images/terrain/" .. location .. "/ambientIllumination.png"), x, y)
+	love.graphics.draw(aii, x, y)
 	love.graphics.setCanvas(aa)
-	love.graphics.draw(love.graphics.newImage("assets/images/terrain/" .. location .. "/albedo.png"), x, y)
+	love.graphics.draw(ai, x, y)
+	
+	if isDamage then
+		love.graphics.setShader(drawAlphaShader)
+		love.graphics.setCanvas(ma)
+		love.graphics.draw(ni, x, y)
+		love.graphics.setCanvas(ra)
+		love.graphics.draw(aii, x, y)
+		love.graphics.setShader()
+	else
+		love.graphics.setCanvas(ma)
+		love.graphics.draw(love.graphics.newImage("assets/images/terrain/" .. location .. "/metalness.png"), x, y)
+		love.graphics.setCanvas(ra)
+		love.graphics.draw(love.graphics.newImage("assets/images/terrain/" .. location .. "/roughness.png"), x, y)
+		love.graphics.setCanvas(fa)
+		love.graphics.draw(love.graphics.newImage("assets/images/terrain/" .. location .. "/fresnel.png"), x, y)
+	end
 end
 
 return assets

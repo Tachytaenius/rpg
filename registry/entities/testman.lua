@@ -7,7 +7,7 @@ return {
 	model = {
 		mesh = assets.entities.testman.mesh,
 		surfaceMap = assets.entities.testman.surfaceMap,
-		albedoMap = assets.entities.testman.albedoMap,
+		diffuseMap = assets.entities.testman.diffuseMap,
 		materialMap = assets.entities.testman.materialMap
 	},
 	abilities = {

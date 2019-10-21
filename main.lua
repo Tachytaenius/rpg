@@ -165,6 +165,7 @@ function love.frameUpdate(dt)
 		end
 		
 		if input.didCommand("takeScreenshot") then
+			-- If uiModifier is held then takeScreenshot will include HUD et cetera.
 			takeScreenshot(input.didCommand("uiModifier") and contentCanvas or scene.outputCanvas)
 		end
 		

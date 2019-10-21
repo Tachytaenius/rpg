@@ -8,7 +8,7 @@ local list, cpml =
 local scene = {}
 
 local gBufferShader, shadowShader, lightingShader, postShader
-local gBufferSetup, positionBuffer, surfaceBuffer, albedoBuffer, materialBuffer, depthBuffer
+local gBufferSetup, positionBuffer, surfaceBuffer, diffuseBuffer, materialBuffer, depthBuffer
 local shadowMapSetup, shadowMap
 local lightCanvas
 local dummy -- For using light shader
@@ -18,11 +18,11 @@ function scene.init()
 	
 	positionBuffer = love.graphics.newCanvas(constants.width, constants.height, {format = "rgba16f"})
 	surfaceBuffer = love.graphics.newCanvas(constants.width, constants.height, {format = "rgba16f"})
-	albedoBuffer = love.graphics.newCanvas(constants.width, constants.height)
+	diffuseBuffer = love.graphics.newCanvas(constants.width, constants.height)
 	materialBuffer = love.graphics.newCanvas(constants.width, constants.height)
 	depthBuffer = love.graphics.newCanvas(constants.width, constants.height, {format = "depth32f"})
 	gBufferSetup = {
-		positionBuffer, surfaceBuffer, albedoBuffer, materialBuffer,
+		positionBuffer, surfaceBuffer, diffuseBuffer, materialBuffer,
 		depthstencil = depthBuffer
 	}
 	
@@ -94,7 +94,7 @@ end
 function sendGBufferToLightingShader()
 	lightingShader:send("positionBuffer", positionBuffer)
 	lightingShader:send("surfaceBuffer", surfaceBuffer)
-	lightingShader:send("albedoBuffer", albedoBuffer)
+	lightingShader:send("diffuseBuffer", diffuseBuffer)
 	lightingShader:send("materialBuffer", materialBuffer)
 	lightingShader:send("viewPosition", {scene.camera.pos:unpack()})
 end
@@ -116,7 +116,7 @@ function renderObjects(world)
 		gBufferShader:send("modelMatrixInverse", chunkTransform)
 		gBufferShader:send("damageOverlays", true)
 		gBufferShader:send("surfaceMap", assets.terrain.surfaceMap.value)
-		gBufferShader:send("albedoMap", assets.terrain.albedoMap.value)
+		gBufferShader:send("diffuseMap", assets.terrain.diffuseMap.value)
 		gBufferShader:send("materialMap", assets.terrain.materialMap.value)
 	end
 	for i = 1, scene.chunksToDraw.size do
@@ -142,7 +142,7 @@ function renderObjects(world)
 				inverse = inverse:transpose(inverse)
 				gBufferShader:send("modelMatrixInverse", inverse)
 				gBufferShader:send("surfaceMap", model.surfaceMap.value)
-				gBufferShader:send("albedoMap", model.albedoMap.value)
+				gBufferShader:send("diffuseMap", model.diffuseMap.value)
 				gBufferShader:send("materialMap", model.materialMap.value)
 			end
 			
@@ -161,7 +161,7 @@ function renderObjects(world)
 					-- inverse = inverse:transpose(inverse)
 					-- currentShader:send("modelMatrixInverse", inverse)
 					gBufferShader:send("surfaceMap", model.surfaceMap.value)
-					gBufferShader:send("albedoMap", model.albedoMap.value)
+					gBufferShader:send("diffuseMap", model.diffuseMap.value)
 					gBufferShader:send("materialMap", model.materialMap.value)
 				end
 				
