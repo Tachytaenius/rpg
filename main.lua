@@ -27,6 +27,9 @@ local outlineShader
 local infoCanvas, contentCanvas
 local world
 
+ -- For love.draw, written to in love.run
+local performance
+
 -- Used for mouse movement
 local mdx, mdy
 
@@ -106,7 +109,11 @@ function love.draw(lerp)
 	if settings.graphics.showPerformance then
 		love.graphics.setCanvas(infoCanvas)
 		love.graphics.clear(0, 0, 0, 0)
-		love.graphics.print("FPS: " .. love.timer.getFPS() .. "\nGarbage: " .. collectgarbage("count") * 1024, 1, 1)
+		love.graphics.print(
+			"FPS: " .. love.timer.getFPS() .. "\n" ..
+			-- "Garbage: " .. collectgarbage("count") * 1024 -- counts all memory for some reason
+			"Tick time: " .. (type(performance) == "number" and math.floor(performance * 100 + 0.5) .. "%" or "N/A")
+		, 1, 1)
 	end
 	if scene.cameraEntity and not (ui.current and ui.current.causesPause) then
 		if not settings.graphics.interpolation then
@@ -218,51 +225,49 @@ end
 
 -- TODO: Move tick routine out.
 function love.fixedUpdate(dt)
-	if not (ui.current and ui.current.causesPause) then
-		local chunkUpdates = {}
-		
-		for i = 1, world.entities.size do
-			local entity = world.entities:get(i)
-			-- Back up previous fields for interpolation
-			entity.ptheta, entity.pphi, entity.px, entity.py, entity.pz, entity.pw, entity.ph, entity.pd = entity.theta, entity.phi, world.bumpWorld:getCube(entity)
-			if entity.controller then -- Do own movement
-				local will
-				if type(entity.controller) == "number" then
-					assert(entity.controller == 1, "Multiplayer is not here yet")
-					will = getWill(mdx, mdy)
-				else
-					will = think(entity, world)
-				end
-				move.selfAccelerate(entity, will, dt)
-				modifyChunk.interactBlocks(entity, will, world, chunkUpdates)
+	local chunkUpdates = {}
+	
+	for i = 1, world.entities.size do
+		local entity = world.entities:get(i)
+		-- Back up previous fields for interpolation
+		entity.ptheta, entity.pphi, entity.px, entity.py, entity.pz, entity.pw, entity.ph, entity.pd = entity.theta, entity.phi, world.bumpWorld:getCube(entity)
+		if entity.controller then -- Do own movement
+			local will
+			if type(entity.controller) == "number" then
+				assert(entity.controller == 1, "Multiplayer is not here yet")
+				will = getWill(mdx, mdy)
+			else
+				will = think(entity, world)
 			end
-			move.gravitate(entity, world.gravityAmount, world.gravityMaxFallSpeed, dt)
+			move.selfAccelerate(entity, will, dt)
+			modifyChunk.interactBlocks(entity, will, world, chunkUpdates)
 		end
-		
-		for i = 1, world.entities.size do
-			move.collide(world.entities:get(i), world.bumpWorld, dt)
-		end
-		
-		for i = 1, world.entities.size do
-			local entity = world.entities:get(i)
-			world.bumpWorld:update(entity, entity.nextX, entity.nextY, entity.nextZ)
-			entity.vx, entity.vy, entity.vz, entity.nextVx, entity.nextVy, entity.nextVz, entity.nextX, entity.nextY, entity.nextZ =
-				entity.nextVx, entity.nextVy, entity.nextVz
-			-- snap y velocity
-			entity.vy = math.abs(entity.vy) > constants.velocitySnap and entity.vy or 0
-		end
-		
-		-- TODO push apart entities that're in the same place and use random (in a deterministic order) in the resolutions on their ambiguities
-		
-		for chunk, newTerrain in pairs(chunkUpdates) do
-			chunk.terrain = newTerrain
-		end
-		for chunk, newTerrain in pairs(chunkUpdates) do
-			chunk:updateMesh()
-		end
-		
-		mdx, mdy = 0, 0
+		move.gravitate(entity, world.gravityAmount, world.gravityMaxFallSpeed, dt)
 	end
+	
+	for i = 1, world.entities.size do
+		move.collide(world.entities:get(i), world.bumpWorld, dt)
+	end
+	
+	for i = 1, world.entities.size do
+		local entity = world.entities:get(i)
+		world.bumpWorld:update(entity, entity.nextX, entity.nextY, entity.nextZ)
+		entity.vx, entity.vy, entity.vz, entity.nextVx, entity.nextVy, entity.nextVz, entity.nextX, entity.nextY, entity.nextZ =
+			entity.nextVx, entity.nextVy, entity.nextVz
+		-- snap y velocity
+		entity.vy = math.abs(entity.vy) > constants.velocitySnap and entity.vy or 0
+	end
+	
+	-- TODO push apart entities that're in the same place and use random (in a deterministic order) in the resolutions on their ambiguities
+	
+	for chunk, newTerrain in pairs(chunkUpdates) do
+		chunk.terrain = newTerrain
+	end
+	for chunk, newTerrain in pairs(chunkUpdates) do
+		chunk:updateMesh()
+	end
+	
+	mdx, mdy = 0, 0
 end
 
 -- The following function is based on the MIT licensed code here: https://gist.github.com/Positive07/5e80f03cabd069087930d569c148241c
@@ -287,13 +292,18 @@ function love.run()
 		
 		do -- Update
 			delta = love.timer.step()
-			local start = love.timer.getTime()
 			lag = math.min(lag + delta, constants.tickWorth * settings.graphics.maxTicksPerFrame)
 			local frames = math.floor(lag / constants.tickWorth)
 			lag = lag % constants.tickWorth
 			love.frameUpdate(delta)
-			for _=1, frames do
-				love.fixedUpdate(constants.tickWorth)
+			if not (ui.current and ui.current.causesPause) then
+				local start = love.timer.getTime()
+				for _=1, frames do
+					love.fixedUpdate(constants.tickWorth)
+				end
+				if frames ~= 0 then performance = (love.timer.getTime() - start) / (frames * constants.tickWorth) end
+			else
+				performance = nil
 			end
 		end
 		
