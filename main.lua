@@ -229,6 +229,7 @@ end
 
 function love.fixedUpdate(dt)
 	local blockDamages, blockBuildings = {}, {}
+	local bumpCubesToUpdate = {}
 	local wills = {}
 	
 	for i = 1, world.entities.size do
@@ -244,12 +245,19 @@ function love.fixedUpdate(dt)
 				will = think(entity, world)
 			end
 			wills[entity] = will
-			move.selfAccelerate(entity, will, dt)
+			move.selfAccelerate(entity, will, dt, world, bumpCubesToUpdate)
 			modifyChunk.damageBlocks(entity, will, world, blockDamages)
 		end
 		move.gravitate(entity, world.gravityAmount, world.gravityMaxFallSpeed, dt)
 	end
 	modifyChunk.doDamages(world, blockDamages)
+	
+	-- For crouching
+	for entity in pairs(bumpCubesToUpdate) do
+		local x, y, z, w, _, d = world.bumpWorld:getCube(entity)
+		local h = entity.height
+		world.bumpWorld:update(entity, x, y, z, w, h, d)
+	end
 	
 	for i = 1, world.entities.size do
 		local entity = world.entities:get(i)

@@ -44,7 +44,7 @@ constants.fixedCommands = {
 	strafeRight = "whileDown",
 	jump = "whileDown",
 	run = "whileDown",
-	sneak = "whileDown",
+	crouch = "whileDown",
 	
 	destroy = "onPress",
 	build = "onPress"

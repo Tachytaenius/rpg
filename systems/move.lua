@@ -13,9 +13,36 @@ function move.gravitate(entity, amount, maxFallSpeed, dt)
 	entity.vy = useTargetAndChange(entity.vy, -maxFallSpeed, entity.vy > -maxFallSpeed and -amount or amount, dt)
 end
 
-function move.selfAccelerate(entity, will, dt)
+function move.selfAccelerate(entity, will, dt, world, bumpCubesToUpdate)
 	local abilities = entity.abilities
 	local mobility = abilities.mobility
+	
+	-- re: +/- entity.crouchLength:
+	-- float sub/add is deterministic and never loses accuracy
+	if will.crouch and abilities.crouch then
+		if not entity.isCrouched then
+			entity.isCrouched = true
+			-- origh = entity.height
+			-- origeh = entity.eyeHeight
+			entity.height = entity.height - entity.crouchLength
+			entity.eyeHeight = entity.eyeHeight - entity.crouchLength
+			bumpCubesToUpdate[entity] = true
+		end
+	elseif entity.isCrouched then
+		-- TODO: If passenger/mount entity relationships are added... well, it would be silly to stop a horse from uncrouching just because its rider is on top.
+		local x, y, z, w, _, d = world.bumpWorld:getCube(entity)
+		local h = entity.height + entity.crouchLength
+		local items, len = world.bumpWorld:queryCube(x, y, z, w, h, d)
+		local hasSpace = len == 1 -- The entity trying to uncrouch is *always* going to be in the query. We want to make sure nothing else is.
+		if hasSpace then
+			entity.isCrouched = false
+			entity.height = entity.height + entity.crouchLength
+			entity.eyeHeight = entity.eyeHeight + entity.crouchLength
+			-- assert(origh == entity.height)
+			-- assert(origeh == entity.eyeHeight)
+			bumpCubesToUpdate[entity] = true
+		end
+	end
 	
 	local targetX = will.targetVelocityXMultiplier or 0
 	targetX = targetX * mobility.maximumTargetVelocity.x[targetX > 0 and "positive" or "negative"]

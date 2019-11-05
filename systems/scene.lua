@@ -257,8 +257,11 @@ function scene.setTransforms(world, lerp)
 		if model then
 			local x, y, z, w, h, d, theta, phi = getEntitySpatials(bumpWorld, entity, lerp)
 			
+			local eyeToTopOfBox = entity.height - entity.eyeHeight
+			local lerpdEyeHeight = h - eyeToTopOfBox
+			
 			local transform = cpml.mat4.identity()
-			transform:translate(transform, cpml.vec3(x+w/2, y+entity.eyeHeight, z+d/2))
+			transform:translate(transform, cpml.vec3(x+w/2, y+lerpdEyeHeight, z+d/2))
 			transform:rotate(transform, -theta - math.pi, cpml.vec3.unit_y)
 			transform:rotate(transform, phi, cpml.vec3.unit_x)
 			model.transform = transform:transpose(transform)
@@ -269,9 +272,11 @@ function scene.setTransforms(world, lerp)
 		local x, y, z, w, h, d, theta, phi = getEntitySpatials(bumpWorld, scene.cameraEntity, lerp)
 		-- TODO: allow lerping of all attributes
 		
+		local eyeToTopOfBox = scene.cameraEntity.height - scene.cameraEntity.eyeHeight
+		local lerpdEyeHeight = h - eyeToTopOfBox
 		
 		scene.camera.fov = scene.cameraEntity.fov
-		scene.camera.pos = cpml.vec3(x + w / 2, y + scene.cameraEntity.eyeHeight, z + d / 2)
+		scene.camera.pos = cpml.vec3(x + w / 2, y + lerpdEyeHeight, z + d / 2)
 		scene.camera.angle = cpml.vec3(phi, theta, 0)
 	end
 end

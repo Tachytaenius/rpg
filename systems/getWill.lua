@@ -4,7 +4,7 @@ local function getWill(mdx, mdy)
 	-- Player version of "think", ie obeys commands
 	local will = {}
 	
-	local sneak, run = input.didFixedCommand("sneak"), input.didFixedCommand("run")
+	local crouch, run = input.didFixedCommand("crouch"), input.didFixedCommand("run")
 	local advance, backpedal = input.didFixedCommand("advance"), input.didFixedCommand("backpedal")
 	local strafeLeft, strafeRight = input.didFixedCommand("strafeLeft"), input.didFixedCommand("strafeRight")
 	local tvx, tvz = 0, 0
@@ -13,10 +13,10 @@ local function getWill(mdx, mdy)
 	if strafeLeft then tvx = tvx - 1 end
 	if strafeRight then tvx = tvx + 1 end
 	will.targetVelocityXMultiplier, will.targetVelocityZMultiplier =
-	tvx * (sneak and not run and 0.1 or run and not sneak and 1 or 0.5),
-	tvz * (sneak and not run and 0.1 or run and not sneak and 1 or 0.5)
+		tvx * (crouch and 0.1 or run and not crouch and 1 or 0.5),
+		tvz * (crouch and 0.1 or run and not crouch and 1 or 0.5)
 	
-	-- Sneak and walk has half the jump height of run
+	-- crouch has the same jump height as walk. TODO maybe leap forwards instead?
 	will.targetVelocityYMultiplier = input.didFixedCommand("jump") and math.sqrt(run and 1 or 0.5) or 0
 	will.targetVelocityThetaMultiplier = mdx
 	will.targetVelocityPhiMultiplier = mdy
@@ -28,6 +28,8 @@ local function getWill(mdx, mdy)
 	if input.didFixedCommand("build") then
 		will.build = true
 	end
+	
+	will.crouch = crouch
 	
 	return will
 end
