@@ -84,21 +84,24 @@ function modifyChunk.doDamages(world, blockDamages)
 		if x == cw - 1 and chunk.pxNeighbour then
 			lenChunksToUpdate = lenChunksToUpdate + 1
 			chunksToUpdate[lenChunksToUpdate] = chunk.pxNeighbour
-		elseif x == 0 and chunk.nxNeighbour then
+		end
+		if x == 0 and chunk.nxNeighbour then
 			lenChunksToUpdate = lenChunksToUpdate + 1
-			chunksToUpdate[lenChunksToUpdate] = chunk.pxNeighbour
+			chunksToUpdate[lenChunksToUpdate] = chunk.nxNeighbour
 		end
 		if y == ch - 1 and chunk.pyNeighbour then
 			lenChunksToUpdate = lenChunksToUpdate + 1
 			chunksToUpdate[lenChunksToUpdate] = chunk.pyNeighbour
-		elseif y == 0 and chunk.nyNeighbour then
+		end
+		if y == 0 and chunk.nyNeighbour then
 			lenChunksToUpdate = lenChunksToUpdate + 1
 			chunksToUpdate[lenChunksToUpdate] = chunk.nyNeighbour
 		end
 		if z == cd - 1 and chunk.pzNeighbour then
 			lenChunksToUpdate = lenChunksToUpdate + 1
 			chunksToUpdate[lenChunksToUpdate] = chunk.pzNeighbour
-		elseif z == 0 and chunk.nzNeighbour then
+		end
+		if z == 0 and chunk.nzNeighbour then
 			lenChunksToUpdate = lenChunksToUpdate + 1
 			chunksToUpdate[lenChunksToUpdate] = chunk.nzNeighbour
 		end

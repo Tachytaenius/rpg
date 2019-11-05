@@ -3,7 +3,7 @@ local detmath = require("lib.detmath")
 
 return {
 	diameter = 0.48, height = 1.65, mass = 60,
-	fov = 90, eyeHeight = 1.58, crouchLength = 0.75,
+	fov = 90, eyeHeight = 1.58, crouchLength = 0.55,
 	model = {
 		mesh = assets.entities.testman.mesh,
 		surfaceMap = assets.entities.testman.surfaceMap,
