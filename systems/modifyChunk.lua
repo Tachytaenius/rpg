@@ -1,3 +1,5 @@
+local constants = require("constants")
+local cw, ch, cd = constants.chunkWidth, constants.chunkHeight, constants.chunkDepth
 local detmath = require("lib.detmath")
 local blockHash = require("systems.blockHash")
 local bhDecode = blockHash.decode
@@ -33,29 +35,82 @@ local function getRayParameters(entity, will, world)
 	return cx, cy, cz, cx + dx, cy + dy, cz + dz, tilesOnlyFilter
 end
 
-local function updateNeighbours(chunk, chunkUpdates)
-	if chunk.pxNeighbour then chunkUpdates[chunk.pxNeighbour] = chunkUpdates[chunk.pxNeighbour] or chunk.pxNeighbour.terrain end
-	if chunk.nxNeighbour then chunkUpdates[chunk.nxNeighbour] = chunkUpdates[chunk.nxNeighbour] or chunk.nxNeighbour.terrain end
-	if chunk.pyNeighbour then chunkUpdates[chunk.pyNeighbour] = chunkUpdates[chunk.pyNeighbour] or chunk.pyNeighbour.terrain end
-	if chunk.nyNeighbour then chunkUpdates[chunk.nyNeighbour] = chunkUpdates[chunk.nyNeighbour] or chunk.nyNeighbour.terrain end
-	if chunk.pzNeighbour then chunkUpdates[chunk.pzNeighbour] = chunkUpdates[chunk.pzNeighbour] or chunk.pzNeighbour.terrain end
-	if chunk.nzNeighbour then chunkUpdates[chunk.nzNeighbour] = chunkUpdates[chunk.nzNeighbour] or chunk.nzNeighbour.terrain end
+local chunksToUpdate, lenChunksToUpdate = {}, 0
+function modifyChunk.updateChunkMeshes()
+	for i = 1, lenChunksToUpdate do
+		chunksToUpdate[i]:updateMesh()
+	end
+	chunksToUpdate, lenChunksToUpdate = {}, 0
 end
 
-function modifyChunk.interactBlocks(entity, will, world, chunkUpdates)
-	if not will then return end
-	if will.destroy then
-		local tiles, len = world.bumpWorld:querySegment(getRayParameters(entity, will, world))
+function modifyChunk.damageBlocks(entity, will, world, blockDamages)
+	if will and will.destroy then
+		local blocks, len = world.bumpWorld:querySegment(getRayParameters(entity, will, world))
 		if len > 0 then
-			local hash = tiles[1] -- Ie tiles is a sequence of hashes of tiles and, uh, yeah. We're breaking the first one.
-			local x, y, z, chunkId = bhDecode(hash)
-			local chunk = world.chunksById[chunkId]
-			local index = bhEncodeForTerrainString(x, y, z)
-			chunkUpdates[chunk] = replaceChar(chunkUpdates[chunk] or chunk.terrain, index, string.char(0))
-			world.bumpWorld:remove(hash)
-			updateNeighbours(chunk, chunkUpdates)
+			local hash = blocks[1] -- Ie blocks is a sequence of hashes of blocks and, uh, yeah. We're damaging the first one.
+			
+			if blockDamages[hash] then
+				blockDamages[hash] = blockDamages[hash] + 1
+			else
+				-- local x, y, z, chunkId = bhDecode(hash)
+				-- local chunk = world.chunksById[chunkId]
+				-- local blockId, state, damage = chunk:getBlock(x, y, z)
+				blockDamages[hash] = 1
+			end
 		end
 	end
+end
+
+
+function modifyChunk.doDamages(world, blockDamages)
+	for hash, damageDealt in pairs(blockDamages) do
+		local x, y, z, chunkId = bhDecode(hash)
+		local chunk = world.chunksById[chunkId]
+		local index = bhEncodeForTerrainString(x, y, z)
+		
+		local currentMetadata = string.byte(string.sub(chunk.metadata, index, index))
+		
+		if currentMetadata % 4 + damageDealt >= 4 then
+			chunk.metadata = replaceChar(chunk.metadata, index, string.char(0))
+			chunk.terrain = replaceChar(chunk.terrain, index, string.char(0))
+			world.bumpWorld:remove(hash)
+		else
+			chunk.metadata = replaceChar(chunk.metadata, index, string.char(currentMetadata + damageDealt))
+		end
+		
+		lenChunksToUpdate = lenChunksToUpdate + 1
+		chunksToUpdate[lenChunksToUpdate] = chunk
+		
+		if x == cw - 1 and chunk.pxNeighbour then
+			lenChunksToUpdate = lenChunksToUpdate + 1
+			chunksToUpdate[lenChunksToUpdate] = chunk.pxNeighbour
+		elseif x == 0 and chunk.nxNeighbour then
+			lenChunksToUpdate = lenChunksToUpdate + 1
+			chunksToUpdate[lenChunksToUpdate] = chunk.pxNeighbour
+		end
+		if y == ch - 1 and chunk.pyNeighbour then
+			lenChunksToUpdate = lenChunksToUpdate + 1
+			chunksToUpdate[lenChunksToUpdate] = chunk.pyNeighbour
+		elseif y == 0 and chunk.nyNeighbour then
+			lenChunksToUpdate = lenChunksToUpdate + 1
+			chunksToUpdate[lenChunksToUpdate] = chunk.nyNeighbour
+		end
+		if z == cd - 1 and chunk.pzNeighbour then
+			lenChunksToUpdate = lenChunksToUpdate + 1
+			chunksToUpdate[lenChunksToUpdate] = chunk.pzNeighbour
+		elseif z == 0 and chunk.nzNeighbour then
+			lenChunksToUpdate = lenChunksToUpdate + 1
+			chunksToUpdate[lenChunksToUpdate] = chunk.nzNeighbour
+		end
+	end
+end
+
+function modifyChunk.buildBlocks()
+	
+end
+
+function modifyChunk.doBuildings()
+	
 end
 
 return modifyChunk

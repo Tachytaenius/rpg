@@ -4,9 +4,9 @@ local function getWill(mdx, mdy)
 	-- Player version of "think", ie obeys commands
 	local will = {}
 	
-	local sneak, run = input.didCommand("sneak"), input.didCommand("run")
-	local advance, backpedal = input.didCommand("advance"), input.didCommand("backpedal")
-	local strafeLeft, strafeRight = input.didCommand("strafeLeft"), input.didCommand("strafeRight")
+	local sneak, run = input.didFixedCommand("sneak"), input.didFixedCommand("run")
+	local advance, backpedal = input.didFixedCommand("advance"), input.didFixedCommand("backpedal")
+	local strafeLeft, strafeRight = input.didFixedCommand("strafeLeft"), input.didFixedCommand("strafeRight")
 	local tvx, tvz = 0, 0
 	if advance then tvz = tvz - 1 end
 	if backpedal then tvz = tvz + 1 end
@@ -17,15 +17,15 @@ local function getWill(mdx, mdy)
 	tvz * (sneak and not run and 0.1 or run and not sneak and 1 or 0.5)
 	
 	-- Sneak and walk has half the jump height of run
-	will.targetVelocityYMultiplier = input.didCommand("jump") and math.sqrt(run and 1 or 0.5) or 0
+	will.targetVelocityYMultiplier = input.didFixedCommand("jump") and math.sqrt(run and 1 or 0.5) or 0
 	will.targetVelocityThetaMultiplier = mdx
 	will.targetVelocityPhiMultiplier = mdy
 	
-	if input.didCommand("destroy") then
+	if input.didFixedCommand("destroy") then
 		will.destroy = true
 	end
 	
-	if input.didCommand("build") then
+	if input.didFixedCommand("build") then
 		will.build = true
 	end
 	

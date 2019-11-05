@@ -20,7 +20,7 @@ constants.fontSpecials = {
 	{from = "---", to = "}"} -- em dash
 }
 
-constants.commands = {
+constants.frameCommands = {
 	pause = "onRelease",
 	
 	toggleMouseGrab = "onRelease",
@@ -34,8 +34,10 @@ constants.commands = {
 	
 	uiPrimary = "whileDown",
 	uiSecondary = "whileDown",
-	uiModifier = "whileDown",
-	
+	uiModifier = "whileDown"
+}
+
+constants.fixedCommands = {
 	advance = "whileDown",
 	strafeLeft = "whileDown",
 	backpedal = "whileDown",
@@ -48,6 +50,13 @@ constants.commands = {
 	build = "onPress"
 }
 
+for name in pairs(constants.frameCommands) do
+	assert(not constants.fixedCommands[name], name .. " is a duplicate command name")
+end
+for name in pairs(constants.fixedCommands) do
+	assert(not constants.frameCommands[name], name .. " is a duplicate command name")
+end
+
 constants.infoWidth = 200
 constants.infoHeight = 100
 
@@ -55,9 +64,9 @@ constants.blockWidth = 0.5 -- metres
 constants.blockHeight = 0.5
 constants.blockDepth = 0.5
 
-constants.chunkWidth = 8 -- blocks
-constants.chunkHeight = 8
-constants.chunkDepth = 8
+constants.chunkWidth = 16 -- blocks
+constants.chunkHeight = 16
+constants.chunkDepth = 16
 
 constants.velocitySnap = 0.001
 constants.bumpCellSize = 4 -- metres

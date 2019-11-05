@@ -37,7 +37,7 @@ local function generate(cx, cy, cz, chunkId, bumpWorld, seed)
 				else
 					tmpTerrainTable[hash] = string.char(0) -- air
 				end
-				tmpMetadataTable[hash] = love.math.random(0, 255)
+				tmpMetadataTable[hash] = string.char(0)
 			end
 		end
 	end
@@ -64,37 +64,37 @@ function updateString(self)
 	self.columnString = table.concat(self.columnTable)
 end
 
-function generateTree(terrain, ox, oy, oz, trunkX, trunkZ, bumpWorld)
-	-- TODO
-	local treeDiameter = 1
-	local treeHeight = 4
-	
-	local blockX = bw * (ox + trunkX)
-	local blockZ = bd * (oz + trunkZ)
-	local terrainHeightInMetresAtTrunk = bh * (10+4*smoothRandom(--[[seed, but => 2 args turns love.math.noise perlin, do not want]] blockX/16, blockZ/16)) -- TODO: From cached information?
-	
-	-- TODO: abort if obstructed (requires not to write to table unless sure not gonna abort)
-	for x = math.max(trunkX, 0), math.min(trunkX + treeDiameter, cw) - 1 do
-		local terrainX = terrain[x]
-		for z = math.max(trunkZ, 0), math.min(trunkZ + treeDiameter, cd) - 1 do
-			local terrainXZ = terrainX[z]
-			local columnTable = terrainXZ.columnTable
-			local boxes = terrainXZ.boxes
-			for y = 0, ch - 1 do
-				local blockYInMetres = bh * (oy + y)
-				if blockYInMetres >= terrainHeightInMetresAtTrunk and blockYInMetres - terrainHeightInMetresAtTrunk <= treeHeight then
-					columnTable[y + 1] = string.char(4)
-					local box = boxes[y]
-					if not box then
-						box = {}
-						boxes[y] = box
-					end
-					bumpWorld:add(box, blockX, blockYInMetres, blockZ, bw, bh, bd)
-				end
-			end
-		end
-	end
-end
+-- function generateTree(terrain, ox, oy, oz, trunkX, trunkZ, bumpWorld)
+-- 	-- TODO
+-- 	local treeDiameter = 1
+-- 	local treeHeight = 4
+-- 
+-- 	local blockX = bw * (ox + trunkX)
+-- 	local blockZ = bd * (oz + trunkZ)
+-- 	local terrainHeightInMetresAtTrunk = bh * (10+4*smoothRandom(--[[seed, but => 2 args turns love.math.noise perlin, do not want]] blockX/16, blockZ/16)) -- TODO: From cached information?
+-- 
+-- 	-- TODO: abort if obstructed (requires not to write to table unless sure not gonna abort)
+-- 	for x = math.max(trunkX, 0), math.min(trunkX + treeDiameter, cw) - 1 do
+-- 		local terrainX = terrain[x]
+-- 		for z = math.max(trunkZ, 0), math.min(trunkZ + treeDiameter, cd) - 1 do
+-- 			local terrainXZ = terrainX[z]
+-- 			local columnTable = terrainXZ.columnTable
+-- 			local boxes = terrainXZ.boxes
+-- 			for y = 0, ch - 1 do
+-- 				local blockYInMetres = bh * (oy + y)
+-- 				if blockYInMetres >= terrainHeightInMetresAtTrunk and blockYInMetres - terrainHeightInMetresAtTrunk <= treeHeight then
+-- 					columnTable[y + 1] = string.char(4)
+-- 					local box = boxes[y]
+-- 					if not box then
+-- 						box = {}
+-- 						boxes[y] = box
+-- 					end
+-- 					bumpWorld:add(box, blockX, blockYInMetres, blockZ, bw, bh, bd)
+-- 				end
+-- 			end
+-- 		end
+-- 	end
+-- end
 
 return generate
 

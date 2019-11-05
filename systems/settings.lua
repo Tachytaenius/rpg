@@ -29,18 +29,18 @@ local template = {
 	},
 	
 	useScancodes = function(try) if type(try) == "boolean" then return try else return true end end,
-	commands = function(try)
+	frameCommands = function(try)
 		if type(try) == "table" then
 			local result = {}
 			for k, v in pairs(try) do
-				if constants.commands[k] then
+				if constants.frameCommands[k] then
 					if pcall(love.keyboard.isScancodeDown, v) or pcall(love.mouse.isDown, v) then
 						result[k] = v
 					else
-						print("\"" .. v .. "\" is not a valid input to bind to command")
+						print("\"" .. v .. "\" is not a valid input to bind to a frame command")
 					end
 				else
-					print("\"" .. k .. "\" is not a valid command to bind inputs to")
+					print("\"" .. k .. "\" is not a valid frame command to bind inputs to")
 				end
 			end
 			return result
@@ -60,8 +60,27 @@ local template = {
 				
 				uiPrimary = 1,
 				uiSecondary = 2,
-				uiModifier = "lalt",
-				
+				uiModifier = "lalt"
+			}
+		end
+	end,
+	fixedCommands = function(try)
+		if type(try) == "table" then
+			local result = {}
+			for k, v in pairs(try) do
+				if constants.fixedCommands[k] then
+					if pcall(love.keyboard.isScancodeDown, v) or pcall(love.mouse.isDown, v) then
+						result[k] = v
+					else
+						print("\"" .. v .. "\" is not a valid input to bind to a fixed command")
+					end
+				else
+					print("\"" .. k .. "\" is not a valid fixxed command to bind inputs to")
+				end
+			end
+			return result
+		else
+			return {
 				advance = "w",
 				strafeLeft = "a",
 				backpedal = "s",

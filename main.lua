@@ -30,6 +30,9 @@ local world
  -- For love.draw, written to in love.run
 local performance
 
+-- For an "onPaused" function to trigger input.clearFixedCommandsList
+local previousFramePaused
+
 -- Used for mouse movement
 local mdx, mdy
 
@@ -45,6 +48,7 @@ function love.load(args)
 	outlineShader:send("windowSize", {constants.infoWidth, constants.infoHeight})
 	
 	input.clearRawCommands()
+	input.clearFixedCommandsList()
 	settings("load")
 	assets("load")
 	
@@ -159,7 +163,7 @@ end
 
 function love.frameUpdate(dt)
 	do -- Check hotkeys for settings and screenshots etc
-		if input.didCommand("pause") then
+		if input.didFrameCommand("pause") then
 			if ui.current then
 				ui.destroy()
 			else
@@ -167,45 +171,45 @@ function love.frameUpdate(dt)
 			end
 		end
 		
-		if input.didCommand("toggleMouseGrab") then
+		if input.didFrameCommand("toggleMouseGrab") then
 			love.mouse.setRelativeMode(not love.mouse.getRelativeMode())
 		end
 		
-		if input.didCommand("takeScreenshot") then
+		if input.didFrameCommand("takeScreenshot") then
 			-- If uiModifier is held then takeScreenshot will include HUD et cetera.
-			takeScreenshot(input.didCommand("uiModifier") and contentCanvas or scene.outputCanvas)
+			takeScreenshot(input.didFrameCommand("uiModifier") and contentCanvas or scene.outputCanvas)
 		end
 		
-		if input.didCommand("toggleInfo") then
+		if input.didFrameCommand("toggleInfo") then
 			settings.graphics.showPerformance = not settings.graphics.showPerformance
 			settings("save")
 		end
 		
-		if input.didCommand("previousDisplay") and love.window.getDisplayCount() > 1 then
+		if input.didFrameCommand("previousDisplay") and love.window.getDisplayCount() > 1 then
 			settings.graphics.display = (settings.graphics.display - 2) % love.window.getDisplayCount() + 1
 			settings("apply") -- TODO: test thingy... y'know, "press enter to save or wait 5 seconds to revert"
 			settings("save")
 		end
 		
-		if input.didCommand("nextDisplay") and love.window.getDisplayCount() > 1 then
+		if input.didFrameCommand("nextDisplay") and love.window.getDisplayCount() > 1 then
 			settings.graphics.display = (settings.graphics.display) % love.window.getDisplayCount() + 1
 			settings("apply")
 			settings("save")
 		end
 		
-		if input.didCommand("scaleDown") and settings.graphics.scale > 1 then
+		if input.didFrameCommand("scaleDown") and settings.graphics.scale > 1 then
 			settings.graphics.scale = settings.graphics.scale - 1
 			settings("apply")
 			settings("save")
 		end
 		
-		if input.didCommand("scaleUp") then
+		if input.didFrameCommand("scaleUp") then
 			settings.graphics.scale = settings.graphics.scale + 1
 			settings("apply")
 			settings("save")
 		end
 		
-		if input.didCommand("toggleFullscreen") then
+		if input.didFrameCommand("toggleFullscreen") then
 			settings.graphics.fullscreen = not settings.graphics.fullscreen
 			settings("apply")
 			settings("save")
@@ -220,12 +224,12 @@ function love.frameUpdate(dt)
 		-- TODO: particles and such
 	end
 	
-	input.stepRawCommands()
+	input.stepRawCommands(ui.current and ui.current.causesPause)
 end
 
--- TODO: Move tick routine out.
 function love.fixedUpdate(dt)
-	local chunkUpdates = {}
+	local blockDamages, blockBuildings = {}, {}
+	local wills = {}
 	
 	for i = 1, world.entities.size do
 		local entity = world.entities:get(i)
@@ -239,11 +243,21 @@ function love.fixedUpdate(dt)
 			else
 				will = think(entity, world)
 			end
+			wills[entity] = will
 			move.selfAccelerate(entity, will, dt)
-			modifyChunk.interactBlocks(entity, will, world, chunkUpdates)
+			modifyChunk.damageBlocks(entity, will, world, blockDamages)
 		end
 		move.gravitate(entity, world.gravityAmount, world.gravityMaxFallSpeed, dt)
 	end
+	modifyChunk.doDamages(world, blockDamages)
+	
+	for i = 1, world.entities.size do
+		local entity = world.entities:get(i)
+		modifyChunk.buildBlocks(entity, wills[entity], world, blockBuildings)
+	end
+	modifyChunk.doBuildings(world, blockBuildings)
+	
+	modifyChunk.updateChunkMeshes()
 	
 	for i = 1, world.entities.size do
 		move.collide(world.entities:get(i), world.bumpWorld, dt)
@@ -260,14 +274,8 @@ function love.fixedUpdate(dt)
 	
 	-- TODO push apart entities that're in the same place and use random (in a deterministic order) in the resolutions on their ambiguities
 	
-	for chunk, newTerrain in pairs(chunkUpdates) do
-		chunk.terrain = newTerrain
-	end
-	for chunk, newTerrain in pairs(chunkUpdates) do
-		chunk:updateMesh()
-	end
-	
 	mdx, mdy = 0, 0
+	input.clearFixedCommandsList()
 end
 
 -- The following function is based on the MIT licensed code here: https://gist.github.com/Positive07/5e80f03cabd069087930d569c148241c
@@ -304,7 +312,12 @@ function love.run()
 				if frames ~= 0 then performance = (love.timer.getTime() - start) / (frames * constants.tickWorth) end
 			else
 				performance = nil
+				if previousFramePaused then
+					-- "onPause"
+					input.clearFixedCommandsList()
+				end
 			end
+			local previousFramePaused = ui.current and ui.current.causesPause
 		end
 		
 		if love.graphics.isActive() then -- Rendering

@@ -29,7 +29,7 @@ end
 function ui.update()
 	assert(ui.current, "Can't update UI without a UI")
 	
-	suit.updateMouse(ui.current.mouseX, ui.current.mouseY, input.didCommand("uiPrimary"))
+	suit.updateMouse(ui.current.mouseX, ui.current.mouseY, input.didFrameCommand("uiPrimary"))
 	
 	local destroy = uis[ui.current.type].update(ui.current)
 	if destroy then ui.destroy() end
