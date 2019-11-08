@@ -43,7 +43,8 @@ local assets = {
 		constants = {
 			blockTextureSize = 16, -- pixels
 			numTextures = numTextures
-		}
+		},
+		blockCursor = {}
 	},
 	
 	entities = {
@@ -230,6 +231,30 @@ function assets.terrain.load()
 	materialMap.value = makeMaterialMap(metalnessAtlas, roughnessAtlas, fresnelAtlas, true)
 	surfaceMap.value = makeSurfaceMap(normalAtlas, ambientIlluminationAtlas, true)
 	diffuseMap.value = love.graphics.newImage(diffuseAtlas)
+	
+	local format = {
+		{"VertexPosition", "float", 3}
+	}
+	
+	local w, h, d, pad = constants.blockWidth, constants.blockHeight, constants.blockDepth, constants.blockCursorPadding
+	local vertices = {
+		{-pad, -pad, -pad}, {-pad, -pad, -pad}, {w+pad, -pad, -pad},
+		{w+pad, -pad, -pad}, {w+pad, -pad, -pad}, {w+pad, -pad, d+pad},
+		{w+pad, -pad, d+pad}, {w+pad, -pad, d+pad}, {-pad, -pad, d+pad},
+		{-pad, -pad, d+pad}, {-pad, -pad, d+pad}, {-pad, -pad, -pad},
+		
+		{-pad, h+pad, -pad}, {-pad, h+pad, -pad}, {w+pad, h+pad, -pad},
+		{w+pad, h+pad, -pad}, {w+pad, h+pad, -pad}, {w+pad, h+pad, d+pad},
+		{w+pad, h+pad, d+pad},{w+pad, h+pad, d+pad}, {-pad, h+pad, d+pad},
+		{-pad, h+pad, d+pad}, {-pad, h+pad, d+pad}, {-pad, h+pad, -pad},
+		
+		{-pad, -pad, -pad}, {-pad, -pad, -pad}, {-pad, h+pad, -pad},
+		{-pad, -pad, d+pad}, {-pad, -pad, d+pad}, {-pad, h+pad, d+pad},
+		{w+pad, -pad, -pad}, {w+pad, -pad, -pad}, {w+pad, h+pad, -pad},
+		{w+pad, -pad, d+pad}, {w+pad, -pad, d+pad}, {w+pad, h+pad, d+pad}
+	}
+	
+	assets.terrain.blockCursor.value = love.graphics.newMesh(format, vertices, "triangles")
 end
 
 local drawAlphaShader = love.graphics.newShader[[

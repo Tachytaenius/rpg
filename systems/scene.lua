@@ -1,13 +1,14 @@
-local constants, assets =
+local constants, assets, settings =
 	require("constants"),
-	require("assets")
+	require("assets"),
+	require("systems.settings")
 local list, cpml =
 	require("lib.list"),
 	require("lib.cpml")
 
 local scene = {}
 
-local gBufferShader, shadowShader, lightingShader, postShader
+local gBufferShader, shadowShader, lightingShader, postShader, blockCursorShader
 local gBufferSetup, positionBuffer, surfaceBuffer, diffuseBuffer, materialBuffer, depthBuffer
 local shadowMapSetup, shadowMap
 local lightCanvas
@@ -38,6 +39,7 @@ function scene.init()
 	shadowShader = love.graphics.newShader("shaders/shadow.glsl")
 	lightingShader = love.graphics.newShader("shaders/lighting.glsl")
 	postShader = love.graphics.newShader("shaders/post.glsl")
+	blockCursorShader = love.graphics.newShader("shaders/blockCursor.glsl")
 	
 	gBufferShader:send("damageOverlayVLength", 1 / assets.terrain.constants.numTextures)
 	lightingShader:send("nearPlane", constants.lightNearPlane) -- For getting values out of the shadow map depth buffer
@@ -279,6 +281,57 @@ function scene.setTransforms(world, lerp)
 		scene.camera.pos = cpml.vec3(x + w / 2, y + lerpdEyeHeight, z + d / 2)
 		scene.camera.angle = cpml.vec3(phi, theta, 0)
 	end
+end
+
+local function tilesOnlyFilter(item)
+	return type(item) == "number"
+end
+
+local bhDecode = require("systems.blockHash").decode
+local bw, bh, bd = constants.blockWidth, constants.blockHeight, constants.blockDepth
+local cw, ch, cd = constants.chunkWidth, constants.chunkHeight, constants.chunkDepth
+
+function scene.drawBlockCursor(world, lerp)
+	if not scene.cameraEntity then return end
+	
+	local x, y, z, w, h, d, theta, phi = getEntitySpatials(world.bumpWorld, scene.cameraEntity, lerp)
+	
+	local eyeToTopOfBox = scene.cameraEntity.height - scene.cameraEntity.eyeHeight
+	local lerpdEyeHeight = h - eyeToTopOfBox
+	
+	local x1, y1, z1 = x + w / 2, y + lerpdEyeHeight, z + d / 2
+	local dx, dy, dz =
+		scene.cameraEntity.abilities.reach * math.cos(theta - math.tau / 4) * math.cos(phi),
+		-scene.cameraEntity.abilities.reach * math.sin(phi),
+		scene.cameraEntity.abilities.reach * math.sin(theta - math.tau / 4) * math.cos(phi)
+	local x2, y2, z2 = x1 + dx, y1 + dy, z1 + dz
+	
+	local blocks, len = world.bumpWorld:querySegment(x1, y1, z1, x2, y2, z2, tilesOnlyFilter)
+	
+	if len == 0 then return end
+	
+	local hash = blocks[1]
+	local x, y, z, chunkId = bhDecode(hash)
+	local chunk = world.chunksById[chunkId]
+	local tx, ty, tz =
+		bw * (chunk.x * cw + x),
+		bh * (chunk.y * ch + y),
+		bd * (chunk.z * cd + z)
+	
+	local transform = cpml.mat4.identity()
+	transform:translate(transform, cpml.vec3(tx, ty, tz))
+	transform = transform:transpose(transform)
+	
+	blockCursorShader:send("modelMatrix", transform)
+	blockCursorShader:send("view", getCameraTransform(scene.camera))
+	love.graphics.push("all")
+	love.graphics.setColor(settings.graphics.blockCursorColour)
+	love.graphics.setShader(blockCursorShader)
+	love.graphics.setMeshCullMode("none")
+	love.graphics.setCanvas({love.graphics.getCanvas(), depthstencil = depthBuffer})
+	love.graphics.setWireframe(true)
+	love.graphics.draw(assets.terrain.blockCursor.value, constants.width/2, constants.height/2)
+	love.graphics.pop()
 end
 
 return scene

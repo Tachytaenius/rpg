@@ -12,7 +12,13 @@ local template = {
 		scale = function(try) return isNatural(try) and try or 2 end,
 		display = function(try) return isNatural(try) and try or 1 end,
 		maxTicksPerFrame = function(try) return isNatural(try) and try or 4 end,
-		vsync = function(try) if type(try) == "boolean" then return try else return true end end
+		vsync = function(try) if type(try) == "boolean" then return try else return true end end,
+		blockCursorColour = {
+			function(try) return type(try) == "number" and try >= 0 and try <= 1 and try or 0 end,
+			function(try) return type(try) == "number" and try >= 0 and try <= 1 and try or 0 end,
+			function(try) return type(try) == "number" and try >= 0 and try <= 1 and try or 0 end,
+			function(try) return type(try) == "number" and try >= 0 and try <= 1 and try or 0.75 end
+		}
 	},
 	
 	mouse = {

@@ -1,3 +1,5 @@
+math.tau = math.pi * 2 -- detmath.tau is just as good-- they're both just plain floats, detmath's isn't slower in any way-- but when you're not using any other parts of detmath, requiring it just for tau isn't very nice
+
 local constants, registry, settings, assets =
 	require("constants"),
 	require("registry"), -- NOTE: registry must be required before assets because of terrainClone hack
@@ -142,6 +144,7 @@ function love.draw(lerp)
 		love.graphics.draw(assets.ui.cursor.value, math.floor(ui.current.mouseX), math.floor(ui.current.mouseY), settings.mouse.cursorRotation * detmath.tau / 4)
 	else
 		-- draw HUD
+		scene.drawBlockCursor(world, lerp)
 		local chw, chh = assets.ui.crosshairs.value:getDimensions()
 		love.graphics.draw(assets.ui.crosshairs.value, (constants.width - chw) / 2, (constants.height - chh) / 2)
 	end

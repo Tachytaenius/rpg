@@ -64,6 +64,8 @@ constants.blockWidth = 0.5 -- metres
 constants.blockHeight = 0.5
 constants.blockDepth = 0.5
 
+constants.blockCursorPadding = 0.01 -- metres
+
 constants.chunkWidth = 16 -- blocks
 constants.chunkHeight = 16
 constants.chunkDepth = 16
