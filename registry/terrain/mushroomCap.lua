@@ -10,7 +10,6 @@ local sideBits = {
 return {
 	textures = {"skin", "flesh"},
 	getTextureAtlasOffset = function(face, selfState, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn)
-		print(math.floor(selfState / 2 ^ sideBits[face]) % 2)
 		return math.floor(selfState / 2 ^ sideBits[face]) % 2
 	end
 }

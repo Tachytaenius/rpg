@@ -24,7 +24,7 @@ local function generate(cx, cy, cz, chunkId, bumpWorld, seed)
 				if blockY <= terrainHeight then
 					local block
 					if blockY + bh > terrainHeight then
-						block = registry.terrainByName.grass and registry.terrainByName.mushroomCap
+						block = registry.terrainByName.grass
 					elseif blockY > terrainHeight - constants.dirtLayerHeight then
 						block = registry.terrainByName.soil
 					else
