@@ -96,7 +96,7 @@ function love.load(args)
 		
 		-- There's no point iterating the coords way if you're not going to use them.
 		for _, chunk in pairs(world.chunksById) do
-			chunk:updateMesh()
+			chunk:updateMesh(world.chunks)
 			scene.chunksToDraw:add(chunk)
 		end
 		
@@ -243,7 +243,7 @@ function love.fixedUpdate(dt)
 			local will
 			if type(entity.controller) == "number" then
 				assert(entity.controller == 1, "Multiplayer is not here yet")
-				will = getWill(mdx, mdy)
+				will = getWill(entity, mdx, mdy)
 			else
 				will = think(entity, world)
 			end
@@ -268,7 +268,7 @@ function love.fixedUpdate(dt)
 	end
 	modifyChunk.doBuildings(world, blockBuildings)
 	
-	modifyChunk.updateChunkMeshes()
+	modifyChunk.updateChunkMeshes(world.chunks)
 	
 	for i = 1, world.entities.size do
 		move.collide(world.entities:get(i), world.bumpWorld, dt)

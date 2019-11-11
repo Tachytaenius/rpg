@@ -17,15 +17,15 @@ local function generate(cx, cy, cz, chunkId, bumpWorld, seed)
 		for z = 0, cd - 1 do
 			local blockX = bw * (ox + x)
 			local blockZ = bd * (oz + z)
-			local terrainHeight = bh * (10+4*smoothRandom(--[[seed, but => 2 args turns love.math.noise perlin, do not want]] blockX/16, blockZ/16))
+			local terrainHeight = bh * (10+8*smoothRandom(--[[seed, but => 2 args turns love.math.noise perlin, do not want]] blockX/16, blockZ/16) + 4*smoothRandom(--[[seed,]] blockX/8, blockZ/8))
 			for y = 0, ch - 1 do
 				local hash = bhEncodeForTerrainString(x, y, z)
 				local blockY = bh * (oy + y)
 				if blockY <= terrainHeight then
 					local block
 					if blockY + bh > terrainHeight then
-						block = registry.terrainByName.grass
-					elseif blockY + terrainHeight >= 2 then
+						block = registry.terrainByName.grass and registry.terrainByName.mushroomCap
+					elseif blockY > terrainHeight - constants.dirtLayerHeight then
 						block = registry.terrainByName.soil
 					else
 						block = registry.terrainByName.stone
@@ -37,7 +37,7 @@ local function generate(cx, cy, cz, chunkId, bumpWorld, seed)
 				else
 					tmpTerrainTable[hash] = string.char(0) -- air
 				end
-				tmpMetadataTable[hash] = string.char(0)
+				tmpMetadataTable[hash] = string.char(math.random(0, 63) * 4)
 			end
 		end
 	end

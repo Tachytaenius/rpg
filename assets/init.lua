@@ -211,7 +211,7 @@ function assets.terrain.load()
 		v2s[blockName] = (y + assets.terrain.constants.blockTextureSize) / atlasHeight
 		
 		if block.textures then
-			extraTexturesSeen = extraTexturesSeen + #block.textures
+			extraTexturesSeen = extraTexturesSeen + #block.textures - 1
 			for j, texture in ipairs(block.textures) do
 				drawTextureToAtlasses(x, y + assets.terrain.constants.blockTextureSize * (j - 1), blockName .. "/" .. texture, false, normalAtlas, ambientIlluminationAtlas, diffuseAtlas, metalnessAtlas, roughnessAtlas, fresnelAtlas)
 			end

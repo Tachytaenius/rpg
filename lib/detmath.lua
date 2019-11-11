@@ -19,7 +19,6 @@ local function log(x)
 	todo()
 end
 local function pow(x, y)
-	todo()
 	local logx = log(x) -- FIXME: no overhead
 	local power = y * logx
 	

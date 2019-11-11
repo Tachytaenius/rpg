@@ -2,6 +2,8 @@ local forNameIn = require("fornamein")
 
 local terrainNames = [[
 	soil grass
+	stone
+	mushroomCap
 ]]
 local entityNames = [[
 	testman

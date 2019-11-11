@@ -7,11 +7,16 @@ local bhEncodeForTerrainString = blockHash.encodeForTerrainString
 
 local modifyChunk = {}
 
--- %s cuts out all embedded zeros, so air is destroyed! %q doesn't, but it *totally* screws up everything else. Including how they are used, and cleaning that up would be even less efficient than what is in use, so... meh.
+local function get(t, k)
+	if t then
+		return t[k]
+	end
+end
+
 -- local function replaceChar(s, i, chr)
 -- 	return string.format("%s%s%s", s:sub(1, i - 1), chr, s:sub(i + 1))
 -- end
-
+-- %s cuts out all embedded zeros, so air is destroyed! %q doesn't, but it *totally* screws up everything else. Including how they are used, and cleaning that up would be even less efficient than what is in use, so... meh. it's not like it's called every frame, anyway
 local replaceChar
 do
 	local tbl, concat, sub = {}, table.concat, string.sub
@@ -36,9 +41,9 @@ local function getRayParameters(entity, will, world)
 end
 
 local chunksToUpdate, lenChunksToUpdate = {}, 0
-function modifyChunk.updateChunkMeshes()
+function modifyChunk.updateChunkMeshes(chunks)
 	for i = 1, lenChunksToUpdate do
-		chunksToUpdate[i]:updateMesh()
+		chunksToUpdate[i]:updateMesh(chunks)
 	end
 	chunksToUpdate, lenChunksToUpdate = {}, 0
 end
@@ -81,30 +86,32 @@ function modifyChunk.doDamages(world, blockDamages)
 		lenChunksToUpdate = lenChunksToUpdate + 1
 		chunksToUpdate[lenChunksToUpdate] = chunk
 		
-		if x == cw - 1 and chunk.pxNeighbour then
-			lenChunksToUpdate = lenChunksToUpdate + 1
-			chunksToUpdate[lenChunksToUpdate] = chunk.pxNeighbour
-		end
-		if x == 0 and chunk.nxNeighbour then
-			lenChunksToUpdate = lenChunksToUpdate + 1
-			chunksToUpdate[lenChunksToUpdate] = chunk.nxNeighbour
-		end
-		if y == ch - 1 and chunk.pyNeighbour then
-			lenChunksToUpdate = lenChunksToUpdate + 1
-			chunksToUpdate[lenChunksToUpdate] = chunk.pyNeighbour
-		end
-		if y == 0 and chunk.nyNeighbour then
-			lenChunksToUpdate = lenChunksToUpdate + 1
-			chunksToUpdate[lenChunksToUpdate] = chunk.nyNeighbour
-		end
-		if z == cd - 1 and chunk.pzNeighbour then
-			lenChunksToUpdate = lenChunksToUpdate + 1
-			chunksToUpdate[lenChunksToUpdate] = chunk.pzNeighbour
-		end
-		if z == 0 and chunk.nzNeighbour then
-			lenChunksToUpdate = lenChunksToUpdate + 1
-			chunksToUpdate[lenChunksToUpdate] = chunk.nzNeighbour
-		end
+		local chunks = world.chunks
+		local cx, cy, cz = chunk.x, chunk.y, chunk.z
+		
+		local xn, xp, yn, yp, zn, zp =
+			x == 0, x == cw - 1,
+			y == 0, y == ch - 1,
+			z == 0, z == cd - 1
+		
+		if xn then local chunkToAdd = get(get(get(chunks, cx-1), cy), cz) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
+		if xn and yn then local chunkToAdd = get(get(get(chunks, cx-1), cy-1), cz) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
+		if xn and yp then local chunkToAdd = get(get(get(chunks, cx-1), cy+1), cz) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
+		if xn and zn then local chunkToAdd = get(get(get(chunks, cx-1), cy), cz-1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
+		if xn and zp then local chunkToAdd = get(get(get(chunks, cx-1), cy), cz+1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
+		if yn and zn then local chunkToAdd = get(get(get(chunks, cx), cy-1), cz-1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
+		if yn then local chunkToAdd = get(get(get(chunks, cx), cy-1), cz) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
+		if yn and zp then local chunkToAdd = get(get(get(chunks, cx), cy-1), cz+1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
+		if zn then local chunkToAdd = get(get(get(chunks, cx), cy), cz-1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
+		if zp then local chunkToAdd = get(get(get(chunks, cx), cy), cz+1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
+		if yp and zn then local chunkToAdd = get(get(get(chunks, cx), cy+1), cz-1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
+		if yp then local chunkToAdd = get(get(get(chunks, cx), cy+1), cz) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
+		if yp and zp then local chunkToAdd = get(get(get(chunks, cx), cy+1), cz+1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
+		if xp then local chunkToAdd = get(get(get(chunks, cx+1), cy), cz) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
+		if xp and yn then local chunkToAdd = get(get(get(chunks, cx+1), cy-1), cz) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
+		if xp and yp then local chunkToAdd = get(get(get(chunks, cx+1), cy+1), cz) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
+		if xp and zn then local chunkToAdd = get(get(get(chunks, cx+1), cy), cz-1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
+		if xp and zp then local chunkToAdd = get(get(get(chunks, cx+1), cy), cz+1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
 	end
 end
 

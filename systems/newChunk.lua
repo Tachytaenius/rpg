@@ -24,12 +24,6 @@ local function get(t, k)
 	end
 end
 
-local function set(t, k, v)
-	if t then
-		t[k] = v
-	end
-end
-
 local floor = math.floor
 local blockHash = require("systems.blockHash")
 local bhEncodeForTerrainString = blockHash.encodeForTerrainString
@@ -59,27 +53,6 @@ local function newChunk(x, y, z, chunks, bumpWorld, seed, id)
 		getBlock = getBlock
 	}
 	
-	local pxNeighbour = get(get(get(chunks, x + 1), y), z)
-	local nxNeighbour = get(get(get(chunks, x - 1), y), z)
-	local pyNeighbour = get(get(get(chunks, x), y + 1), z)
-	local nyNeighbour = get(get(get(chunks, x), y - 1), z)
-	local pzNeighbour = get(get(get(chunks, x), y), z + 1)
-	local nzNeighbour = get(get(get(chunks, x), y), z - 1)
-	
-	ret.pxNeighbour = pxNeighbour
-	ret.nxNeighbour = nxNeighbour
-	ret.pyNeighbour = pyNeighbour
-	ret.nyNeighbour = nyNeighbour
-	ret.pzNeighbour = pzNeighbour
-	ret.nzNeighbour = nzNeighbour
-	
-	set(pxNeighbour, "nxNeighbour", ret)
-	set(nxNeighbour, "pxNeighbour", ret)
-	set(pyNeighbour, "nyNeighbour", ret)
-	set(nyNeighbour, "pyNeighbour", ret)
-	set(pzNeighbour, "nzNeighbour", ret)
-	set(nzNeighbour, "pzNeighbour", ret)
-	
 	ret.terrain, ret.metadata = generate(x, y, z, id, bumpWorld, seed)
 	
 	return ret
@@ -87,23 +60,17 @@ end
 
 local addRect
 
--- Neighbouring chunks also influence face visibility
-local function getBlockFromSelfOrNeighbours(chunk, x, y, z)
-	local chunkToCheck = chunk
-	 
-	if x == -1 then
-		chunkToCheck = chunk.nxNeighbour
-	elseif x == cw then
-		chunkToCheck = chunk.pxNeighbour
-	elseif y == -1 then
-		chunkToCheck = chunk.nyNeighbour
-	elseif y == ch then
-		chunkToCheck = chunk.pyNeighbour
-	elseif z == -1 then
-		chunkToCheck = chunk.nzNeighbour
-	elseif z == cd then
-		chunkToCheck = chunk.pzNeighbour
-	end
+local function getBlockFromSelfOrNeighbours(chunks, chunk, x, y, z)
+	local cx, cy, cz = chunk.x, chunk.y, chunk.z
+	
+	if x == -1 then cx = cx - 1 end
+	if x == cw then cx = cx + 1 end
+	if y == -1 then cy = cy - 1 end
+	if y == ch then cy = cy + 1 end
+	if z == -1 then cz = cz - 1 end
+	if z == cd then cz = cz + 1 end
+	
+	local chunkToCheck = get(get(get(chunks, cx), cy), cz)
 	
 	if chunkToCheck then
 		x, y, z = x % cw, y % ch, z % cd
@@ -116,7 +83,7 @@ end
 local textureVLength = 1 / assets.terrain.constants.numTextures
 local u1s, v1s, u2s, v2s = assets.terrain.u1s, assets.terrain.v1s, assets.terrain.u2s, assets.terrain.v2s
 
-function updateMesh(self)
+function updateMesh(self, chunks)
 	local selfX, selfY, selfZ = self.x, self.y, self.z
 	
 	local verts, lenVerts = {}, 0
@@ -133,24 +100,24 @@ function updateMesh(self)
 					local getTextureAtlasOffset = block.getTextureAtlasOffset
 					local u1, v1, u2, v2 = u1s[name], v1s[name], u2s[name], v2s[name]
 					
-					local nzz, nzzstate = getBlockFromSelfOrNeighbours(self, x - 1, y, z)
-					local pzz, pzzstate = getBlockFromSelfOrNeighbours(self, x + 1, y, z)
-					local znz, znzstate = getBlockFromSelfOrNeighbours(self, x, y - 1, z)
-					local zpz, zpzstate = getBlockFromSelfOrNeighbours(self, x, y + 1, z)
-					local zzn, zznstate = getBlockFromSelfOrNeighbours(self, x, y, z - 1)
-					local zzp, zzpstate = getBlockFromSelfOrNeighbours(self, x, y, z + 1)
-					local nnz, nnzstate = getBlockFromSelfOrNeighbours(self, x - 1, y - 1, z)
-					local pnz, pnzstate = getBlockFromSelfOrNeighbours(self, x + 1, y - 1, z)
-					local npz, npzstate = getBlockFromSelfOrNeighbours(self, x - 1, y + 1, z)
-					local ppz, ppzstate = getBlockFromSelfOrNeighbours(self, x + 1, y + 1, z)
-					local nzn, nznstate = getBlockFromSelfOrNeighbours(self, x - 1, y, z - 1)
-					local pzn, pznstate = getBlockFromSelfOrNeighbours(self, x + 1, y, z - 1)
-					local nzp, nzpstate = getBlockFromSelfOrNeighbours(self, x - 1, y, z + 1)
-					local pzp, pzpstate = getBlockFromSelfOrNeighbours(self, x + 1, y, z + 1)
-					local zpp, zppstate = getBlockFromSelfOrNeighbours(self, x, y + 1, z + 1)
-					local zpn, zpnstate = getBlockFromSelfOrNeighbours(self, x, y + 1, z - 1)
-					local znp, znpstate = getBlockFromSelfOrNeighbours(self, x, y - 1, z + 1)
-					local znn, znnstate = getBlockFromSelfOrNeighbours(self, x, y - 1, z - 1)
+					local nzz, nzzstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y, z)
+					local pzz, pzzstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y, z)
+					local znz, znzstate = getBlockFromSelfOrNeighbours(chunks, self, x, y - 1, z)
+					local zpz, zpzstate = getBlockFromSelfOrNeighbours(chunks, self, x, y + 1, z)
+					local zzn, zznstate = getBlockFromSelfOrNeighbours(chunks, self, x, y, z - 1)
+					local zzp, zzpstate = getBlockFromSelfOrNeighbours(chunks, self, x, y, z + 1)
+					local nnz, nnzstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y - 1, z)
+					local pnz, pnzstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y - 1, z)
+					local npz, npzstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y + 1, z)
+					local ppz, ppzstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y + 1, z)
+					local nzn, nznstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y, z - 1)
+					local pzn, pznstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y, z - 1)
+					local nzp, nzpstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y, z + 1)
+					local pzp, pzpstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y, z + 1)
+					local zpp, zppstate = getBlockFromSelfOrNeighbours(chunks, self, x, y + 1, z + 1)
+					local zpn, zpnstate = getBlockFromSelfOrNeighbours(chunks, self, x, y + 1, z - 1)
+					local znp, znpstate = getBlockFromSelfOrNeighbours(chunks, self, x, y - 1, z + 1)
+					local znn, znnstate = getBlockFromSelfOrNeighbours(chunks, self, x, y - 1, z - 1)
 					
 					if canDraw(tb, nzz) then
 						local textureIndex = getTextureAtlasOffset and getTextureAtlasOffset("nx", tbstate, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn, nzzstate, pzzstate, znzstate, zpzstate, zznstate, zzpstate, nnzstate, pnzstate, npzstate, ppzstate, nznstate, pznstate, nzpstate, pzpstate, zppstate, zpnstate, znpstate, znnstate) or 0

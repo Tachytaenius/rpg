@@ -1,17 +1,20 @@
 local input = require("systems.input")
 
-local function getWill(mdx, mdy)
+local function getWill(entity, mdx, mdy)
 	-- Player version of "think", ie obeys commands
 	local will = {}
+	
 	
 	local crouch, run = input.didFixedCommand("crouch"), input.didFixedCommand("run")
 	local advance, backpedal = input.didFixedCommand("advance"), input.didFixedCommand("backpedal")
 	local strafeLeft, strafeRight = input.didFixedCommand("strafeLeft"), input.didFixedCommand("strafeRight")
+	will.crouch = crouch
 	local tvx, tvz = 0, 0
 	if advance then tvz = tvz - 1 end
 	if backpedal then tvz = tvz + 1 end
 	if strafeLeft then tvx = tvx - 1 end
 	if strafeRight then tvx = tvx + 1 end
+	crouch = crouch or entity.isCrouched
 	will.targetVelocityXMultiplier, will.targetVelocityZMultiplier =
 		tvx * (crouch and 0.1 or run and not crouch and 1 or 0.5),
 		tvz * (crouch and 0.1 or run and not crouch and 1 or 0.5)
@@ -28,8 +31,6 @@ local function getWill(mdx, mdy)
 	if input.didFixedCommand("build") then
 		will.build = true
 	end
-	
-	will.crouch = crouch
 	
 	return will
 end

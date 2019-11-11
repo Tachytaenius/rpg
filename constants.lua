@@ -84,4 +84,7 @@ constants.vertexFormat = {
 	{"VertexNormal", "float", 3}
 }
 
+-- TEMP location
+constants.dirtLayerHeight = 2.5 -- metres
+
 return constants
