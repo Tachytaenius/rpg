@@ -37,7 +37,7 @@ local function generate(cx, cy, cz, chunkId, bumpWorld, seed)
 				else
 					tmpTerrainTable[hash] = string.char(0) -- air
 				end
-				tmpMetadataTable[hash] = string.char(math.random(0, 63) * 4)
+				tmpMetadataTable[hash] = string.char(0)
 			end
 		end
 	end
