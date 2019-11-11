@@ -66,9 +66,9 @@ constants.blockDepth = 0.5
 
 constants.blockCursorPadding = 0.01 -- metres
 
-constants.chunkWidth = 16 -- blocks
-constants.chunkHeight = 16
-constants.chunkDepth = 16
+constants.chunkWidth = 8 -- blocks
+constants.chunkHeight = 8
+constants.chunkDepth = 8
 
 constants.velocitySnap = 0.001
 constants.bumpCellSize = 4 -- metres
