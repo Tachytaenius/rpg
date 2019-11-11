@@ -75,8 +75,8 @@ constants.bumpCellSize = 4 -- metres
 
 constants.minShadowBias = 0.005
 constants.maxShadowBias = 0.05
-constants.lightNearPlane = 0.001
-constants.shadowMapSize = 1024
+constants.lightNearPlane = 0.001 -- metres
+constants.shadowMapSize = 1024 -- pixels
 
 constants.vertexFormat = {
 	{"VertexPosition", "float", 3},
@@ -86,5 +86,15 @@ constants.vertexFormat = {
 
 -- TEMP location
 constants.dirtLayerHeight = 2.5 -- metres
+
+-- For things like mushroom cap flesh/skin
+constants.sideBits = {
+	px = 0,
+	nx = 1,
+	py = 2,
+	ny = 3,
+	pz = 4,
+	nz = 5
+}
 
 return constants

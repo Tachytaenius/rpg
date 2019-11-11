@@ -1,11 +1,4 @@
-local sideBits = {
-	px = 0,
-	nx = 1,
-	py = 2,
-	ny = 3,
-	pz = 4,
-	nz = 5
-}
+local sideBits = require("constants").sideBits
 
 return {
 	textures = {"skin", "flesh"},
