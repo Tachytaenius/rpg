@@ -50,9 +50,16 @@ end
 
 function modifyChunk.damageBlocks(entity, will, world, blockDamages)
 	if will and will.destroy then
-		local blocks, len = world.bumpWorld:querySegment(getRayParameters(entity, will, world))
+		local blockInfos, len = world.bumpWorld:querySegmentWithCoords(getRayParameters(entity, will, world))
 		if len > 0 then
-			local hash = blocks[1] -- Ie blocks is a sequence of hashes of blocks and, uh, yeah. We're damaging the first one.
+			if len > 1 then
+				local a, b = blockInfos[1],  blockInfos[2]
+				if a.ti1 == b.ti1 then
+					return -- Abort in "tied" cases
+				end
+			end
+			
+			local hash = blockInfos[1].item -- Ie blocks is a sequence of hashes of blocks and, uh, yeah. We're damaging the first one
 			
 			if blockDamages[hash] then
 				blockDamages[hash] = blockDamages[hash] + 1

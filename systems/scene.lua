@@ -306,11 +306,17 @@ function scene.drawBlockCursor(world, lerp)
 		scene.cameraEntity.abilities.reach * math.sin(theta - math.tau / 4) * math.cos(phi)
 	local x2, y2, z2 = x1 + dx, y1 + dy, z1 + dz
 	
-	local blocks, len = world.bumpWorld:querySegment(x1, y1, z1, x2, y2, z2, tilesOnlyFilter)
+	local blockInfos, len = world.bumpWorld:querySegmentWithCoords(x1, y1, z1, x2, y2, z2, tilesOnlyFilter)
 	
 	if len == 0 then return end
+	if len > 1 then
+		local a, b = blockInfos[1],  blockInfos[2]
+		if a.ti1 == b.ti1 then
+			return -- Abort in "tied" cases
+		end
+	end
 	
-	local hash = blocks[1]
+	local hash = blockInfos[1].item
 	local x, y, z, chunkId = bhDecode(hash)
 	local chunk = world.chunksById[chunkId]
 	local tx, ty, tz =
