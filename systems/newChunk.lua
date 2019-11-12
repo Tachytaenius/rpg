@@ -160,9 +160,14 @@ function updateMesh(self, chunks)
 		end
 	end
 	
-	if self.mesh then self.mesh:release() end
-	if lenVerts == 0 then return end
-	self.mesh = love.graphics.newMesh(vertexFormat, verts, "triangles")
+	if self.mesh then
+		self.mesh:release()
+	end
+	if lenVerts == 0 then
+		self.mesh = nil
+	else
+		self.mesh = love.graphics.newMesh(vertexFormat, verts, "triangles")
+	end
 end
 
 function addRect(verts, lenVerts, side, x, y, z, a, b, u1, v1, u2, v2, damage)
