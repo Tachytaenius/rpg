@@ -4,7 +4,6 @@ local function getWill(entity, mdx, mdy)
 	-- Player version of "think", ie obeys commands
 	local will = {}
 	
-	
 	local crouch, run = input.didFixedCommand("crouch"), input.didFixedCommand("run")
 	local advance, backpedal = input.didFixedCommand("advance"), input.didFixedCommand("backpedal")
 	local strafeLeft, strafeRight = input.didFixedCommand("strafeLeft"), input.didFixedCommand("strafeRight")
