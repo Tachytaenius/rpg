@@ -1,3 +1,0 @@
-return {
-	hands = 1
-}

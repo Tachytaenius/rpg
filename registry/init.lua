@@ -3,13 +3,10 @@ local forNameIn = require("fornamein")
 local terrainNames = [[
 	soil grass
 	stone
-	mushroomCap
 ]]
 local entityNames = [[
 	testman
-]]
-local itemNames = [[
-	sword
+	sword pistol
 ]]
 
 local registry = {}
@@ -28,6 +25,5 @@ local terrainClone = require("registry.terrainClone")
 terrainClone.terrainByName, terrainClone.terrainByIndex = registry.terrainByName, registry.terrainByIndex
 
 registry.entities = forNameIn("registry.entities.", entityNames)
-registry.items = forNameIn("registry.items.", itemNames)
 
 return registry

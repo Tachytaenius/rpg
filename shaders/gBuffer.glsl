@@ -1,25 +1,28 @@
+const int maxGroups = 4;
+
 varying vec3 fragmentNormal;
 varying vec3 fragmentPosition;
 // flat in int damage;
 varying float damage;
-
 uniform bool damageOverlays;
 
 #ifdef VERTEX
 	uniform mat4 view;
-	uniform mat4 modelMatrix;
-	uniform mat4 modelMatrixInverse;
+	uniform mat4[maxGroups] modelMatrices;
+	uniform mat4[maxGroups] modelMatrixInverses;
 	
 	attribute vec4 VertexNormal;
 	// attribute int vertexDamage;
-	attribute float vertexDamage; 
+	attribute float vertexDamage;
+	
+	attribute float vertexGroup;
 	
 	vec4 position(mat4 transformProjection, vec4 vertexPosition) {
-		fragmentNormal = -vec3(modelMatrixInverse * VertexNormal); // TODO: I don't know why these are negated. It's not important for now.
-		fragmentPosition = vec3(modelMatrix * vertexPosition);
+		fragmentNormal = -vec3(modelMatrixInverses[int(vertexGroup)] * VertexNormal); // TODO: I don't know why these are negated. It's not important for now.
+		fragmentPosition = vec3(modelMatrices[int(vertexGroup)] * vertexPosition);
 		damage = vertexDamage;
 		
-		return view * modelMatrix * vertexPosition;
+		return view * modelMatrices[int(vertexGroup)] * vertexPosition;
 	}
 #endif
 

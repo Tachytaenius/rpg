@@ -14,19 +14,19 @@ local function newMeshLoader(location)
 end
 
 local makeSurfaceMap, makeMaterialMap
-local function newContent(name, category)
+local function entity(name)
 	return {
 		mesh = {load = function(self)
-			self.value = loadObj("assets/meshes/" .. category .. "/" .. name .. ".obj")
+			self.value, self.groups = loadObj("assets/meshes/entities/" .. name .. ".obj")
 		end},
 		diffuseMap = {load = function(self)
-			self.value = love.graphics.newImage("assets/images/" .. category .. "/" .. name .. "/diffuse.png")
+			self.value = love.graphics.newImage("assets/images/entities/" .. name .. "/diffuse.png")
 		end},
 		surfaceMap = {load = function(self)
-			self.value = makeSurfaceMap("assets/images/" .. category .. "/" .. name .. "/normal.png", "assets/images/" .. category .. "/" .. name .. "/ambientIllumination.png")
+			self.value = makeSurfaceMap("assets/images/entities/" .. name .. "/normal.png", "assets/images/entities/" .. name .. "/ambientIllumination.png")
 		end},
 		materialMap = {load = function(self)
-			self.value = makeMaterialMap("assets/images/" .. category .. "/" .. name .. "/metalness.png", "assets/images/" .. category .. "/" .. name .. "/roughness.png", "assets/images/" .. category .. "/" .. name .. "/fresnel.png")
+			self.value = makeMaterialMap("assets/images/entities/" .. name .. "/metalness.png", "assets/images/entities/" .. name .. "/roughness.png", "assets/images/entities/" .. name .. "/fresnel.png")
 		end}
 	}
 end
@@ -48,11 +48,9 @@ local assets = {
 	},
 	
 	entities = {
-		testman = newContent("testman", "entities")
-	},
-	
-	items = {
-		sword = newContent("sword", "items")
+		testman = entity("testman"),
+		sword = entity("sword"),
+		pistol = entity("pistol")
 	},
 	
 	ui = {
@@ -87,6 +85,8 @@ setmetatable(assets, {
 function loadObj(path, untextured)
 	-- TODO: Better
 	
+	local groups = {} -- Unhandled behaviour for going back to a group already defined
+	local currentGroup
 	local geometry = {}
 	local uv = not untextured and {}
 	local normal = {}
@@ -97,7 +97,11 @@ function loadObj(path, untextured)
 		local isTri = false
 		for word in line:gmatch("%S+") do
 			if item then
-				if isTri then
+				if item == "changingGroup" then
+					currentGroup = currentGroup and currentGroup + 1 or 0
+					groups[currentGroup] = word
+					groups[word] = currentGroup
+				elseif isTri then
 					local iterator = word:gmatch("%x+")
 					local v = geometry[tonumber(iterator())]
 					local vt1, vt2
@@ -111,7 +115,8 @@ function loadObj(path, untextured)
 					local vert = { -- see constants.vertexFormat
 						v[1], v[2], v[3],
 						vt1, 1 - vt2, -- Love --> OpenGL
-						vn[1], vn[2], vn[3]
+						vn[1], vn[2], vn[3],
+						currentGroup or 0
 					}
 					table.insert(outVerts, vert)
 				else
@@ -134,13 +139,18 @@ function loadObj(path, untextured)
 			elseif word == "f" then
 				item = {}
 				isTri = true
+			elseif word == "o" then
+				item = "changingGroup"
 			else
 				error("idk what \"" .. word .. "\" in \"" .. line .. "\" is, sry")
 			end
 		end
 	end
-	
-	return love.graphics.newMesh(constants.vertexFormat, outVerts, "triangles")
+	if not currentGroup then
+		groups.default = 0
+		groups[0] = "default"
+	end
+	return love.graphics.newMesh(constants.vertexFormat, outVerts, "triangles"), groups
 end
 
 function makeSurfaceMap(normalPath, ambientIlluminationPath, alreadyData)

@@ -111,11 +111,11 @@ function renderObjects(world)
 	
 	local currentShader = love.graphics.getShader()
 	local chunkTransform = cpml.mat4.identity()
-	currentShader:send("modelMatrix", chunkTransform) -- or lack thereof
+	currentShader:send("modelMatrices", chunkTransform) -- or lack thereof
 	
 	-- Chunks
 	if currentShader == gBufferShader then
-		gBufferShader:send("modelMatrixInverse", chunkTransform)
+		gBufferShader:send("modelMatrixInverses", chunkTransform)
 		gBufferShader:send("damageOverlays", true)
 		gBufferShader:send("surfaceMap", assets.terrain.surfaceMap.value)
 		gBufferShader:send("diffuseMap", assets.terrain.diffuseMap.value)
@@ -137,12 +137,10 @@ function renderObjects(world)
 		local entity = scene.entitiesToDraw:get(i)
 		local model = entity.model
 		if model then
-			currentShader:send("modelMatrix", model.transform)
+			currentShader:send("modelMatrices", unpack(model.transforms))
 			
 			if currentShader == gBufferShader then
-				local inverse = cpml.mat4.invert(cpml.mat4.new(), model.transform)
-				inverse = inverse:transpose(inverse)
-				gBufferShader:send("modelMatrixInverse", inverse)
+				gBufferShader:send("modelMatrixInverses", unpack(model.inverseTransforms))
 				gBufferShader:send("surfaceMap", model.surfaceMap.value)
 				gBufferShader:send("diffuseMap", model.diffuseMap.value)
 				gBufferShader:send("materialMap", model.materialMap.value)
@@ -154,9 +152,9 @@ function renderObjects(world)
 		if entity.inventory then
 			local wielded = entity.inventory.wield
 			if wielded then
-				local model = assets.items[wielded]
+				local model = wielded.model
 				
-				-- currentShader:send("modelMatrix", itemTransform)
+				currentShader:send("transforms", unpack(model.transforms))
 				
 				if currentShader == gBufferShader then
 					-- local inverse = cpml.mat4.invert(cpml.mat4.new(), itemTransform)
@@ -255,18 +253,30 @@ function scene.setTransforms(world, lerp)
 	for i = 1, entitiesToDraw.size do
 		local entity = entitiesToDraw:get(i)
 		local model = entity.model
+		model.transforms = model.transforms or {}
+		model.inverseTransforms = model.inverseTransforms or {}
 		
 		if model then
-			local x, y, z, w, h, d, theta, phi = getEntitySpatials(bumpWorld, entity, lerp)
-			
-			local eyeToTopOfBox = entity.height - entity.eyeHeight
-			local lerpdEyeHeight = h - eyeToTopOfBox
-			
-			local transform = cpml.mat4.identity()
-			transform:translate(transform, cpml.vec3(x+w/2, y+lerpdEyeHeight, z+d/2))
-			transform:rotate(transform, -theta - math.pi, cpml.vec3.unit_y)
-			transform:rotate(transform, phi, cpml.vec3.unit_x)
-			model.transform = transform:transpose(transform)
+			for id, group in ipairs(model.mesh.groups) do
+				local transform
+				
+				if entity.getTransform then
+					transform = entity:getTransform(group)
+				else
+					local x, y, z, w, h, d, theta, phi = getEntitySpatials(bumpWorld, entity, lerp)
+					local verticalHeight = entity.eyeHeight and (h + entity.eyeHeight - entity.height) or d/2
+					transform = cpml.mat4.identity()
+					transform:translate(transform, cpml.vec3(x+w/2, y+verticalHeight, z+d/2))
+					transform:rotate(transform, -theta - math.pi, cpml.vec3.unit_y)
+					transform:rotate(transform, phi, cpml.vec3.unit_x)
+					transform = transform:transpose(transform)
+				end
+				
+				model.transforms[1] = transform
+				
+				local inverse = cpml.mat4.invert(cpml.mat4.new(), transform)
+				model.inverseTransforms[1] = inverse:transpose(inverse)
+			end
 		end
 	end
 	

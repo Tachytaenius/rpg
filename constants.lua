@@ -81,7 +81,8 @@ constants.shadowMapSize = 1024 -- pixels
 constants.vertexFormat = {
 	{"VertexPosition", "float", 3},
 	{"VertexTexCoord", "float", 2},
-	{"VertexNormal", "float", 3}
+	{"VertexNormal", "float", 3},
+	{"vertexGroup", "float", 1}
 }
 
 -- TEMP location

@@ -11,7 +11,7 @@ local function newEntity(world, type, x, y, z, controller)
 	}
 	
 	local base = registry.entities[type]
-	if base.abilities.inventoryCapacity then
+	if base.abilities and base.abilities.inventoryCapacity then
 		ret.inventory = {}
 	end
 	deepCopy(base, ret)
