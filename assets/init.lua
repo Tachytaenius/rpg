@@ -99,7 +99,6 @@ function loadObj(path, untextured)
 			if item then
 				if item == "changingGroup" then
 					currentGroup = currentGroup and currentGroup + 1 or 0
-					groups[currentGroup] = word
 					groups[word] = currentGroup
 				elseif isTri then
 					local iterator = word:gmatch("%x+")
@@ -148,7 +147,6 @@ function loadObj(path, untextured)
 	end
 	if not currentGroup then
 		groups.default = 0
-		groups[0] = "default"
 	end
 	return love.graphics.newMesh(constants.vertexFormat, outVerts, "triangles"), groups
 end

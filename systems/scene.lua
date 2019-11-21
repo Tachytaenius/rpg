@@ -257,7 +257,7 @@ function scene.setTransforms(world, lerp)
 		model.inverseTransforms = model.inverseTransforms or {}
 		
 		if model then
-			for id, group in ipairs(model.mesh.groups) do
+			for group, id in pairs(model.mesh.groups) do
 				local transform
 				
 				if entity.getTransform then
@@ -272,10 +272,10 @@ function scene.setTransforms(world, lerp)
 					transform = transform:transpose(transform)
 				end
 				
-				model.transforms[1] = transform
+				model.transforms[id + 1] = transform
 				
 				local inverse = cpml.mat4.invert(cpml.mat4.new(), transform)
-				model.inverseTransforms[1] = inverse:transpose(inverse)
+				model.inverseTransforms[id + 1] = inverse:transpose(inverse)
 			end
 		end
 	end
