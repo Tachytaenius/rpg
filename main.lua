@@ -74,7 +74,7 @@ function love.load(args)
 		}
 		local testmanPlayer = newEntity(world, "testman", 4, 9, 4, 1)
 		-- scene.entitiesToDraw:add(testmanPlayer)
-		local testmanCreep = newEntity(world, "testman", 4, 9, 5) and newEntity(world, "pistol", 3, 10, 3)
+		local testmanCreep = newEntity(world, "pistol", 3, 10, 3)
 		scene.entitiesToDraw:add(testmanCreep)
 		scene.cameraEntity = testmanPlayer
 		worldWidth, worldHeight, worldDepth = 4, 3, 4 -- TODO: HELLO I AM A GLOBAL NO NO NO BAD REEEE

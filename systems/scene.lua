@@ -272,13 +272,13 @@ function scene.setTransforms(world, lerp)
 	end
 end
 
-local function tilesOnlyFilter(item)
-	return type(item) == "number"
-end
-
 local bhDecode = require("systems.blockHash").decode
 local bw, bh, bd = constants.blockWidth, constants.blockHeight, constants.blockDepth
 local cw, ch, cd = constants.chunkWidth, constants.chunkHeight, constants.chunkDepth
+
+local function notCameraEntityFilter(item)
+	return item ~= scene.cameraEntity
+end
 
 function scene.drawBlockCursor(world, lerp)
 	if not scene.cameraEntity then return end
@@ -295,17 +295,19 @@ function scene.drawBlockCursor(world, lerp)
 		scene.cameraEntity.abilities.reach * math.sin(theta - math.tau / 4) * math.cos(phi)
 	local x2, y2, z2 = x1 + dx, y1 + dy, z1 + dz
 	
-	local blockInfos, len = world.bumpWorld:querySegmentWithCoords(x1, y1, z1, x2, y2, z2, tilesOnlyFilter)
+	
+	local infos, len = world.bumpWorld:querySegmentWithCoords(x1, y1, z1, x2, y2, z2, notCameraEntityFilter)
 	
 	if len == 0 then return end
+	if type(infos[1].item) ~= "number" then return end
 	if len > 1 then
-		local a, b = blockInfos[1],  blockInfos[2]
+		local a, b = infos[1],  infos[2]
 		if a.ti1 == b.ti1 then
 			return -- Abort in "tied" cases
 		end
 	end
 	
-	local hash = blockInfos[1].item
+	local hash = infos[1].item
 	local x, y, z, chunkId = bhDecode(hash)
 	local chunk = world.chunksById[chunkId]
 	local tx, ty, tz =

@@ -4,6 +4,7 @@ local detmath = require("lib.detmath")
 local blockHash = require("systems.blockHash")
 local bhDecode = blockHash.decode
 local bhEncodeForTerrainString = blockHash.encodeForTerrainString
+local segmentCast = require("systems.segmentCast")
 
 local modifyChunk = {}
 
@@ -26,20 +27,6 @@ do
 	end
 end
 
-local function tilesOnlyFilter(item)
-	return type(item) == "number"
-end
-
-local function getRayParameters(entity, world)
-	local x, y, z, w, h, d = world.bumpWorld:getCube(entity)
-	local cx, cy, cz = x + w / 2, y + entity.eyeHeight, z + d / 2
-	local dx, dy, dz =
-		entity.abilities.reach * detmath.cos(entity.theta - detmath.tau / 4) * detmath.cos(entity.phi),
-		-entity.abilities.reach * detmath.sin(entity.phi),
-		entity.abilities.reach * detmath.sin(entity.theta - detmath.tau / 4) * detmath.cos(entity.phi)
-	return cx, cy, cz, cx + dx, cy + dy, cz + dz, tilesOnlyFilter
-end
-
 local chunksToUpdate, lenChunksToUpdate = {}, 0
 function modifyChunk.updateChunkMeshes(chunks)
 	for i = 1, lenChunksToUpdate do
@@ -48,31 +35,24 @@ function modifyChunk.updateChunkMeshes(chunks)
 	chunksToUpdate, lenChunksToUpdate = {}, 0
 end
 
-function modifyChunk.damageBlocks(entity, will, world, blockDamages)
-	if will and will.destroy then
-		local blockInfos, len = world.bumpWorld:querySegmentWithCoords(getRayParameters(entity, world))
-		if len > 0 then
-			if len > 1 then
-				local a, b = blockInfos[1],  blockInfos[2]
-				if a.ti1 == b.ti1 then
-					return -- Abort in "tied" cases
-				end
-			end
-			
-			local hash = blockInfos[1].item -- Ie blocks is a sequence of hashes of blocks and, uh, yeah. We're damaging the first one
-			
-			if blockDamages[hash] then
-				blockDamages[hash] = blockDamages[hash] + 1
-			else
-				-- local x, y, z, chunkId = bhDecode(hash)
-				-- local chunk = world.chunksById[chunkId]
-				-- local blockId, state, damage = chunk:getBlock(x, y, z)
-				blockDamages[hash] = 1
-			end
-		end
-	end
+local function blocksOnlyFilter(item)
+	return type(item) == "number"
 end
 
+function modifyChunk.damageBlocks(entity, will, world, blockDamages)
+	if will and will.destroy then
+		segmentCast(entity, world.bumpWorld,
+			function(hash)
+				if blockDamages[hash] then
+					blockDamages[hash] = blockDamages[hash] + 1
+				else
+					blockDamages[hash] = 1 -- damage _being dealt_
+				end
+			end,
+			blocksOnlyFilter
+		)
+	end
+end
 
 function modifyChunk.doDamages(world, blockDamages)
 	for hash, damageDealt in pairs(blockDamages) do
