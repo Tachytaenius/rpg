@@ -148,26 +148,6 @@ function renderObjects(world)
 			
 			love.graphics.draw(model.mesh.value, cx, cy)
 		end
-		
-		if entity.inventory then
-			local wielded = entity.inventory.wield
-			if wielded then
-				local model = wielded.model
-				
-				currentShader:send("transforms", unpack(model.transforms))
-				
-				if currentShader == gBufferShader then
-					-- local inverse = cpml.mat4.invert(cpml.mat4.new(), itemTransform)
-					-- inverse = inverse:transpose(inverse)
-					-- currentShader:send("modelMatrixInverse", inverse)
-					gBufferShader:send("surfaceMap", model.surfaceMap.value)
-					gBufferShader:send("diffuseMap", model.diffuseMap.value)
-					gBufferShader:send("materialMap", model.materialMap.value)
-				end
-				
-				love.graphics.draw(model.mesh.value, cx, cy)
-			end
-		end
 	end
 end
 
@@ -257,21 +237,20 @@ function scene.setTransforms(world, lerp)
 		model.inverseTransforms = model.inverseTransforms or {}
 		
 		if model then
+			local x, y, z, w, h, d, theta, phi = getEntitySpatials(bumpWorld, entity, lerp)
 			for group, id in pairs(model.mesh.groups) do
-				local transform
+				local transform = cpml.mat4.identity()
 				
-				if entity.getTransform then
-					transform = entity:getTransform(group)
+				if model.getTransform then
+					model.getTransform(entity, group, transform, x, y, z, w, h, d, theta, phi)
 				else
-					local x, y, z, w, h, d, theta, phi = getEntitySpatials(bumpWorld, entity, lerp)
-					local verticalHeight = entity.eyeHeight and (h + entity.eyeHeight - entity.height) or d/2
-					transform = cpml.mat4.identity()
-					transform:translate(transform, cpml.vec3(x+w/2, y+verticalHeight, z+d/2))
+					-- local verticalHeight = entity.eyeHeight and (h + entity.eyeHeight - entity.height) or d/2
+					transform:translate(transform, cpml.vec3(x+w/2, y, z+d/2))
 					transform:rotate(transform, -theta - math.pi, cpml.vec3.unit_y)
 					transform:rotate(transform, phi, cpml.vec3.unit_x)
-					transform = transform:transpose(transform)
 				end
 				
+				transform = transform:transpose(transform)
 				model.transforms[id + 1] = transform
 				
 				local inverse = cpml.mat4.invert(cpml.mat4.new(), transform)

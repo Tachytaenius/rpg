@@ -30,7 +30,7 @@ local function tilesOnlyFilter(item)
 	return type(item) == "number"
 end
 
-local function getRayParameters(entity, will, world)
+local function getRayParameters(entity, world)
 	local x, y, z, w, h, d = world.bumpWorld:getCube(entity)
 	local cx, cy, cz = x + w / 2, y + entity.eyeHeight, z + d / 2
 	local dx, dy, dz =
@@ -50,7 +50,7 @@ end
 
 function modifyChunk.damageBlocks(entity, will, world, blockDamages)
 	if will and will.destroy then
-		local blockInfos, len = world.bumpWorld:querySegmentWithCoords(getRayParameters(entity, will, world))
+		local blockInfos, len = world.bumpWorld:querySegmentWithCoords(getRayParameters(entity, world))
 		if len > 0 then
 			if len > 1 then
 				local a, b = blockInfos[1],  blockInfos[2]
