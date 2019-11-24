@@ -14,7 +14,7 @@ return {
 				transform:translate(transform, cpml.vec3(x+w/2, y, z+d/2))
 				transform:rotate(transform, -theta - math.pi, cpml.vec3.unit_y)
 				transform:rotate(transform, phi, cpml.vec3.unit_x)
-			elseif group == "rack" then
+			elseif group == "slide" then
 				transform:translate(transform, cpml.vec3(x+w/2, y, z+d/2 + math.random() * 0.06))
 				transform:rotate(transform, -theta - math.pi, cpml.vec3.unit_y)
 				transform:rotate(transform, phi, cpml.vec3.unit_x)

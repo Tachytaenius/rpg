@@ -6,7 +6,7 @@ local terrainNames = [[
 ]]
 local entityNames = [[
 	testman
-	sword pistol
+	sword pistol shotgun
 ]]
 
 local registry = {}

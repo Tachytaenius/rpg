@@ -2,8 +2,8 @@ local assets = require("assets")
 local detmath = require("lib.detmath")
 
 return {
-	diameter = 0.4, height = 1.65, mass = 60,
-	fov = 90, eyeHeight = 1.58, crouchLength = 0.55,
+	diameter = 0.4, height = 1.75, mass = 60,
+	fov = 90, eyeHeight = 1.68, crouchLength = 1,
 	model = {
 		mesh = assets.entities.testman.mesh,
 		surfaceMap = assets.entities.testman.surfaceMap,

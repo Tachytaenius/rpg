@@ -13,22 +13,47 @@ local function newMeshLoader(location)
 	return asset
 end
 
+local function new1x1(r, g, b, a)
+	local ret = love.image.newImageData(1, 1)
+	ret:mapPixel(function()
+		return r, g, b, a
+	end)
+	return love.graphics.newImage(ret)
+end
+
 local makeSurfaceMap, makeMaterialMap
-local function entity(name)
-	return {
-		mesh = {load = function(self)
-			self.value, self.groups = loadObj("assets/meshes/entities/" .. name .. ".obj")
-		end},
-		diffuseMap = {load = function(self)
-			self.value = love.graphics.newImage("assets/images/entities/" .. name .. "/diffuse.png")
-		end},
-		surfaceMap = {load = function(self)
-			self.value = makeSurfaceMap("assets/images/entities/" .. name .. "/normal.png", "assets/images/entities/" .. name .. "/ambientIllumination.png")
-		end},
-		materialMap = {load = function(self)
-			self.value = makeMaterialMap("assets/images/entities/" .. name .. "/metalness.png", "assets/images/entities/" .. name .. "/roughness.png", "assets/images/entities/" .. name .. "/fresnel.png")
-		end}
-	}
+local function entity(name, untextured)
+	if untextured then
+		return {
+			mesh = {load = function(self)
+				self.value, self.groups = loadObj("assets/meshes/entities/" .. name .. ".obj", true)
+			end},
+			diffuseMap = {load = function(self)
+				self.value = new1x1(love.math.random()*0.5+0.25,love.math.random()*0.5+0.25,love.math.random()*0.5+0.25,1)
+			end},
+			surfaceMap = {load = function(self)
+				self.value = new1x1(0.5, 0.5, 1, 1)
+			end},
+			materialMap = {load = function(self)
+				self.value = new1x1(1,1,0,1)
+			end}
+		}
+	else
+		return {
+			mesh = {load = function(self)
+				self.value, self.groups = loadObj("assets/meshes/entities/" .. name .. ".obj")
+			end},
+			diffuseMap = {load = function(self)
+				self.value = love.graphics.newImage("assets/images/entities/" .. name .. "/diffuse.png")
+			end},
+			surfaceMap = {load = function(self)
+				self.value = makeSurfaceMap("assets/images/entities/" .. name .. "/normal.png", "assets/images/entities/" .. name .. "/ambientIllumination.png")
+			end},
+			materialMap = {load = function(self)
+				self.value = makeMaterialMap("assets/images/entities/" .. name .. "/metalness.png", "assets/images/entities/" .. name .. "/roughness.png", "assets/images/entities/" .. name .. "/fresnel.png")
+			end}
+		}
+	end
 end
 
 local numTextures = 4 -- For terrain. Starts at 4 to take damage steps into account
@@ -48,9 +73,10 @@ local assets = {
 	},
 	
 	entities = {
-		testman = entity("testman"),
+		testman = entity("testman", 666),
 		sword = entity("sword"),
-		pistol = entity("pistol")
+		pistol = entity("pistol", true),
+		shotgun = entity("shotgun", true)
 	},
 	
 	ui = {
@@ -101,11 +127,11 @@ function loadObj(path, untextured)
 					currentGroup = currentGroup and currentGroup + 1 or 0
 					groups[word] = currentGroup
 				elseif isTri then
-					local iterator = word:gmatch("%x+")
+					local iterator = word:gmatch("%d+")
 					local v = geometry[tonumber(iterator())]
 					local vt1, vt2
 					if untextured then
-						vt1, vt2 = 0, 0
+						vt1, vt2 = math.random(), 0
 					else
 						local vt = uv[tonumber(iterator())]
 						vt1, vt2 = vt[1], vt[2]
