@@ -76,7 +76,7 @@ local assets = {
 		testman = entity("testman", 666),
 		sword = entity("sword"),
 		pistol = entity("pistol", true),
-		shotgun = entity("shotgun", true)
+		shotgun = entity("shotgun")
 	},
 	
 	ui = {
