@@ -35,7 +35,7 @@ local function entity(name, untextured)
 				self.value = new1x1(0.5, 0.5, 1, 1)
 			end},
 			materialMap = {load = function(self)
-				self.value = new1x1(1,1,0,1)
+				self.value = new1x1(love.math.random(0,1),love.math.random(),love.math.random(),1)
 			end}
 		}
 	else
@@ -73,10 +73,7 @@ local assets = {
 	},
 	
 	entities = {
-		testman = entity("testman", 666),
-		sword = entity("sword"),
-		pistol = entity("pistol", true),
-		shotgun = entity("shotgun")
+		testman = entity("testman")
 	},
 	
 	ui = {

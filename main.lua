@@ -73,8 +73,6 @@ function love.load(args)
 			gravityMaxFallSpeed = 50
 		}
 		local testmanPlayer = newEntity(world, "testman", 4, 9, 4, 1)
-		scene.entitiesToDraw:add(newEntity(world, "shotgun", 3, 10, 3))
-		scene.entitiesToDraw:add(newEntity(world, "testman", 3.3, 10, 3))
 		scene.cameraEntity = testmanPlayer
 		worldWidth, worldHeight, worldDepth = 4, 3, 4 -- TODO: HELLO I AM A GLOBAL NO NO NO BAD REEEE
 		for x = 0, worldWidth - 1 do
