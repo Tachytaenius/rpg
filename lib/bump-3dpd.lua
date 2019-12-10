@@ -595,7 +595,7 @@ local function getInfoAboutItemsTouchedBySegment(self, x1,y1,z1, x2,y2,z2, filte
             -- the sorting is according to the t of an infinite line, not the segment
             tii0, tii1 = cube_getSegmentIntersectionIndices(x,y,z,w,h,d, x1,y1,z1, x2,y2,z2, -math.huge, math.huge)
             itemInfoLen = itemInfoLen + 1
-            itemInfo[itemInfoLen] = {item = item, ti1 = ti1, ti2 = ti2, weight = min(tii0, tii1), normal = {x = nx, y = ny, z = nz}}
+            itemInfo[itemInfoLen] = {item = item, ti1 = ti1, ti2 = ti2, weight = min(tii0, tii1), normalX = nx, normalY = ny, normalZ = nz}
           end
         end
       end

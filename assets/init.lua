@@ -1,3 +1,5 @@
+-- TODO: Observer pattern instead of boxing
+
 local constants = require("constants")
 local registryTerrain = require("registry.terrainClone")
 
@@ -13,8 +15,10 @@ local function newMeshLoader(location)
 	return asset
 end
 
-local function new1x1(r, g, b, a)
-	local ret = love.image.newImageData(1, 1)
+local function blankImage(r, g, b, a, w, h)
+	local w = w or 1
+	local h = w or h
+	local ret = love.image.newImageData(w, h)
 	ret:mapPixel(function()
 		return r, g, b, a
 	end)
@@ -29,13 +33,13 @@ local function entity(name, untextured)
 				self.value, self.groups = loadObj("assets/meshes/entities/" .. name .. ".obj", true)
 			end},
 			diffuseMap = {load = function(self)
-				self.value = new1x1(love.math.random()*0.5+0.25,love.math.random()*0.5+0.25,love.math.random()*0.5+0.25,1)
+				self.value = blankImage(love.math.random()*0.5+0.25,love.math.random()*0.5+0.25,love.math.random()*0.5+0.25,1)
 			end},
 			surfaceMap = {load = function(self)
-				self.value = new1x1(0.5, 0.5, 1, 1)
+				self.value = blankImage(0.5, 0.5, 1, 1)
 			end},
 			materialMap = {load = function(self)
-				self.value = new1x1(love.math.random(0,1),love.math.random(),love.math.random(),1)
+				self.value = blankImage(love.math.random(0,1),love.math.random(),love.math.random(),1)
 			end}
 		}
 	else
@@ -79,7 +83,9 @@ local assets = {
 	ui = {
 		cursor = {load = function(self) self.value = love.graphics.newImage("assets/images/ui/cursor.png") end},
 		font = {load = function(self) self.value = love.graphics.newImageFont("assets/images/ui/font.png", constants.fontString) end},
-		crosshairs = {load = function(self) self.value = love.graphics.newImage("assets/images/ui/crosshairs.png") end}
+		crosshairs = {load = function(self) self.value = love.graphics.newImage("assets/images/ui/crosshairs.png") end},
+		trueButton = {load = function(self) self.value = blankImage(0.2, 0.8, 0.2, 1, 18) end},
+		falseButton = {load = function(self) self.value = blankImage(0.8, 0.2, 0.2, 1, 18) end}
 	}
 }
 

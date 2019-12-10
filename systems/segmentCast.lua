@@ -21,7 +21,7 @@ return function(entity, bumpWorld, action, filter)
 		if filter and not filter(firstItem) then return end
 		
 		if len > 1 then
-			local a, b = infos[1],  infos[2]
+			local a, b = infos[1], infos[2]
 			if a.ti1 == b.ti1 then
 				return -- Abort in "tied" cases
 			end

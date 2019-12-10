@@ -164,54 +164,58 @@ function love.frameUpdate(dt)
 	do -- Check hotkeys for settings and screenshots etc
 		if input.didFrameCommand("pause") then
 			if ui.current then
-				ui.destroy()
+				if not ui.current.ignorePausePress then
+					ui.destroy()
+				end
 			else
 				ui.construct("plainPause")
 			end
 		end
 		
-		if input.didFrameCommand("toggleMouseGrab") then
-			love.mouse.setRelativeMode(not love.mouse.getRelativeMode())
-		end
-		
-		if input.didFrameCommand("takeScreenshot") then
-			-- If uiModifier is held then takeScreenshot will include HUD et cetera.
-			takeScreenshot(input.didFrameCommand("uiModifier") and contentCanvas or scene.outputCanvas)
-		end
-		
-		if input.didFrameCommand("toggleInfo") then
-			settings.graphics.showPerformance = not settings.graphics.showPerformance
-			settings("save")
-		end
-		
-		if input.didFrameCommand("previousDisplay") and love.window.getDisplayCount() > 1 then
-			settings.graphics.display = (settings.graphics.display - 2) % love.window.getDisplayCount() + 1
-			settings("apply") -- TODO: test thingy... y'know, "press enter to save or wait 5 seconds to revert"
-			settings("save")
-		end
-		
-		if input.didFrameCommand("nextDisplay") and love.window.getDisplayCount() > 1 then
-			settings.graphics.display = (settings.graphics.display) % love.window.getDisplayCount() + 1
-			settings("apply")
-			settings("save")
-		end
-		
-		if input.didFrameCommand("scaleDown") and settings.graphics.scale > 1 then
-			settings.graphics.scale = settings.graphics.scale - 1
-			settings("apply")
-			settings("save")
-		end
-		
-		if input.didFrameCommand("scaleUp") then
-			settings.graphics.scale = settings.graphics.scale + 1
-			settings("apply")
-			settings("save")
-		end
-		
-		if input.didFrameCommand("toggleFullscreen") then
-			settings.graphics.fullscreen = not settings.graphics.fullscreen
-			settings("apply")
-			settings("save")
+		if not ui.current or ui.current.type ~= "settings" then
+			if input.didFrameCommand("toggleMouseGrab") then
+				love.mouse.setRelativeMode(not love.mouse.getRelativeMode())
+			end
+			
+			if input.didFrameCommand("takeScreenshot") then
+				-- If uiModifier is held then takeScreenshot will include HUD et cetera.
+				takeScreenshot(input.didFrameCommand("uiModifier") and contentCanvas or scene.outputCanvas)
+			end
+			
+			if input.didFrameCommand("toggleInfo") then
+				settings.graphics.showPerformance = not settings.graphics.showPerformance
+				settings("save")
+			end
+			
+			if input.didFrameCommand("previousDisplay") and love.window.getDisplayCount() > 1 then
+				settings.graphics.display = (settings.graphics.display - 2) % love.window.getDisplayCount() + 1
+				settings("apply") -- TODO: test thingy... y'know, "press enter to save or wait 5 seconds to revert"
+				settings("save")
+			end
+			
+			if input.didFrameCommand("nextDisplay") and love.window.getDisplayCount() > 1 then
+				settings.graphics.display = (settings.graphics.display) % love.window.getDisplayCount() + 1
+				settings("apply")
+				settings("save")
+			end
+			
+			if input.didFrameCommand("scaleDown") and settings.graphics.scale > 1 then
+				settings.graphics.scale = settings.graphics.scale - 1
+				settings("apply")
+				settings("save")
+			end
+			
+			if input.didFrameCommand("scaleUp") then
+				settings.graphics.scale = settings.graphics.scale + 1
+				settings("apply")
+				settings("save")
+			end
+			
+			if input.didFrameCommand("toggleFullscreen") then
+				settings.graphics.fullscreen = not settings.graphics.fullscreen
+				settings("apply")
+				settings("save")
+			end
 		end
 	end
 	

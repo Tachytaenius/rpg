@@ -4,7 +4,12 @@ local constants, settings, assets =
 	require("constants"),
 	require("systems.settings"),
 	require("assets")
-local uis = require("fornamein")("uis.", "plainPause")
+
+local uiNames = [[
+	plainPause settings
+]]
+
+local uis = require("fornamein")("uis.", uiNames)
 
 local ui = {}
 
@@ -26,13 +31,29 @@ function ui.destroy()
 	suit.exitFrame()
 end
 
+-- destroy followed by construct resets cursor position. This doesn't
+function ui.replace(type)
+	assert(ui.current, "Can't replace UI without a UI")
+	local mx, my = ui.current.mouseX, ui.current.mouseY
+	ui.construct(type)
+	ui.current.mouseX, ui.current.mouseY = mx, my
+	suit.exitFrame()
+	suit.enterFrame()
+end
+
 function ui.update()
 	assert(ui.current, "Can't update UI without a UI")
 	
 	suit.updateMouse(ui.current.mouseX, ui.current.mouseY, input.didFrameCommand("uiPrimary"))
 	
-	local destroy = uis[ui.current.type].update(ui.current)
-	if destroy then ui.destroy() end
+	local destroy, typeToTransitionTo = uis[ui.current.type].update(ui.current)
+	if destroy then
+		if typeToTransitionTo then
+			ui.replace(typeToTransitionTo)
+		else
+			ui.destroy()
+		end
+	end
 end
 
 function ui.mouse(dx, dy)
