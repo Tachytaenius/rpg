@@ -98,4 +98,8 @@ constants.sideBits = {
 	nz = 5
 }
 
+-- In certain "camera conditions" block sides would show some pixels from their neighbouring textures in the terrain texture atlasses
+-- Saves more memory than padding each texture in the the terrain texture atlasses, and is probably a lot faster than using min/max etc. for Texel's arguments...
+constants.textureBleedMargin = 0.001
+
 return constants

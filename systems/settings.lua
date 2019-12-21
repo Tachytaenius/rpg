@@ -1,6 +1,12 @@
 local constants = require("constants")
 local json = require("lib.json")
 
+local uiLayout = {
+	"Graphics",
+	{name = "Fullscreen", "graphics","fullscreen"},
+	{name = "Interpolation", "graphics","interpolation"}
+}
+
 local types = {}
 local typeInstanceOrigins = {}
 
@@ -164,13 +170,6 @@ local template = {
 		destroy = 1,
 		build = 2
 	})
-}
-
-local uiLayout = {
-	"Graphics",
-		{name = "Fullscreen", "graphics","fullscreen"},
-		{name = "Interpolation", "graphics","interpolation"},
-	""
 }
 
 return setmetatable({}, {

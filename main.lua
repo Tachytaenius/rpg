@@ -135,6 +135,9 @@ function love.draw(lerp)
 		love.graphics.setShader()
 	end
 	if ui.current then
+		if ui.current.draw then
+			ui.current.draw() -- rectangles, lines, etc
+		end
 		suit.draw()
 		love.graphics.setColor(settings.mouse.cursorColour)
 		love.graphics.draw(assets.ui.cursor.value, math.floor(ui.current.mouseX), math.floor(ui.current.mouseY), settings.mouse.cursorRotation * detmath.tau / 4)
@@ -172,16 +175,14 @@ function love.frameUpdate(dt)
 			end
 		end
 		
+		if input.didFrameCommand("toggleMouseGrab") then
+			love.mouse.setRelativeMode(not love.mouse.getRelativeMode())
+		end
+		if input.didFrameCommand("takeScreenshot") then
+			-- If uiModifier is held then takeScreenshot will include HUD et cetera.
+			takeScreenshot(input.didFrameCommand("uiModifier") and contentCanvas or scene.outputCanvas)
+		end
 		if not ui.current or ui.current.type ~= "settings" then
-			if input.didFrameCommand("toggleMouseGrab") then
-				love.mouse.setRelativeMode(not love.mouse.getRelativeMode())
-			end
-			
-			if input.didFrameCommand("takeScreenshot") then
-				-- If uiModifier is held then takeScreenshot will include HUD et cetera.
-				takeScreenshot(input.didFrameCommand("uiModifier") and contentCanvas or scene.outputCanvas)
-			end
-			
 			if input.didFrameCommand("toggleInfo") then
 				settings.graphics.showPerformance = not settings.graphics.showPerformance
 				settings("save")

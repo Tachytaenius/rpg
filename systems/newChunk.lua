@@ -170,7 +170,11 @@ function updateMesh(self, chunks)
 	end
 end
 
+local shift = constants.textureBleedMargin
 function addRect(verts, lenVerts, side, x, y, z, a, b, u1, v1, u2, v2, damage)
+	u1, v1 = u1 + shift, v1 + shift
+	u2, v2 = u2 - shift, v2 - shift
+	
 	local vv, vV, Vv, VV
 	if side == "nyz" then
 		vv = {x, y, z, u1, v2, -1, 0, 0, damage}
