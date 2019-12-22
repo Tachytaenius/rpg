@@ -136,11 +136,11 @@ function love.draw(lerp)
 	end
 	if ui.current then
 		if ui.current.draw then
-			ui.current.draw() -- rectangles, lines, etc
+			ui.current.draw() -- stuff SUIT can't do: rectangles, lines, etc
 		end
 		suit.draw()
 		love.graphics.setColor(settings.mouse.cursorColour)
-		love.graphics.draw(assets.ui.cursor.value, math.floor(ui.current.mouseX), math.floor(ui.current.mouseY), settings.mouse.cursorRotation * detmath.tau / 4)
+		love.graphics.draw(assets.ui.cursor.value, math.floor(ui.current.mouseX), math.floor(ui.current.mouseY))
 	else
 		-- draw HUD
 		scene.drawBlockCursor(world, lerp)
@@ -232,8 +232,8 @@ function love.frameUpdate(dt)
 end
 
 function love.fixedUpdate(dt)
-	local blockDamages, blockBuildings = {}, {}
-	local bumpCubesToUpdate = {}
+	local blockDamages, blockBuildings, blockMetadataBuildings = {}, {}, {}
+	local bumpCubesToUpdate, chunksToUpdate = {}, {}
 	local wills = {}
 	
 	for i = 1, world.entities.size do
@@ -254,7 +254,7 @@ function love.fixedUpdate(dt)
 		end
 		move.gravitate(entity, world.gravityAmount, world.gravityMaxFallSpeed, dt)
 	end
-	modifyChunk.doDamages(world, blockDamages)
+	modifyChunk.doDamages(world, blockDamages, chunksToUpdate)
 	
 	-- For crouching
 	for entity in pairs(bumpCubesToUpdate) do
@@ -265,11 +265,13 @@ function love.fixedUpdate(dt)
 	
 	for i = 1, world.entities.size do
 		local entity = world.entities:get(i)
-		modifyChunk.buildBlocks(entity, wills[entity], world, blockBuildings)
+		modifyChunk.buildBlocks(entity, wills[entity], world, blockBuildings, blockMetadataBuildings)
 	end
-	modifyChunk.doBuildings(world, blockBuildings)
+	modifyChunk.doBuildings(world, blockBuildings, blockMetadataBuildings, chunksToUpdate)
 	
-	modifyChunk.updateChunkMeshes(world.chunks)
+	for chunk, _ in pairs(chunksToUpdate) do
+		chunk:updateMesh(world.chunks)
+	end
 	
 	for i = 1, world.entities.size do
 		move.collide(world.entities:get(i), world.bumpWorld, dt)

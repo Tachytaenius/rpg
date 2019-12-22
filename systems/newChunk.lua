@@ -30,8 +30,7 @@ local bhEncodeForTerrainString = blockHash.encodeForTerrainString
 local function getBlock(self, x, y, z)
 	local hash = bhEncodeForTerrainString(x, y, z)
 	local terrainChar = string.sub(self.terrain, hash, hash)
-	local metadataChar = string.sub(self.metadata, hash, hash)
-	local metadata = string.byte(metadataChar)
+	local metadata = string.byte(string.sub(self.metadata, hash, hash))
 	-- metadata byte:
 	-- ssssssdd
 	local state, damage = floor(metadata / 4), metadata % 4
@@ -170,10 +169,12 @@ function updateMesh(self, chunks)
 	end
 end
 
-local shift = constants.textureBleedMargin
+-- In certain "camera conditions" block sides would show some pixels from their neighbouring textures in the terrain texture atlasses
+-- Saves more memory than padding each texture in the the terrain texture atlasses, and is probably a lot faster than using min/max etc. for Texel's arguments...
+local shift = textureVLength * 0.001
 function addRect(verts, lenVerts, side, x, y, z, a, b, u1, v1, u2, v2, damage)
-	u1, v1 = u1 + shift, v1 + shift
-	u2, v2 = u2 - shift, v2 - shift
+	v1 = v1 + shift
+	v2 = v2 - shift
 	
 	local vv, vV, Vv, VV
 	if side == "nyz" then

@@ -86,16 +86,6 @@ function types.number(default)
 	return instance
 end
 
--- int from 0 to 3
-function types.direction(default)
-	assert(type(default) == "number" and math.floor(default) == default and 0 <= default and default <= 3, "Non-direction default for direction setting")
-	local instance = function(try)
-		return type(try) == "number" and math.floor(try) == try and 0 <= try and try <= 3 and try or default
-	end
-	typeInstanceOrigins[instance] = types.direction
-	return instance
-end
-
 function types.commands(kind, default)
 	local instance = function(try)
 		if type(try) == "table" then
@@ -136,8 +126,7 @@ local template = {
 		divideByScale = types.boolean(true),
 		xSensitivity = types.number(1),
 		ySensitivity = types.number(1),
-		cursorColour = types.rgba(1, 1, 1, 1),
-		cursorRotation = types.direction(0)
+		cursorColour = types.rgba(1, 1, 1, 1)
 	},
 	
 	useScancodes = types.boolean(true),

@@ -27,7 +27,6 @@ return function(entity, bumpWorld, action, filter)
 			end
 		end
 		
-		
-		return action(firstItem)
+		return action(firstItem, infos[1])
 	end
 end

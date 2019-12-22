@@ -1,10 +1,13 @@
 local constants = require("constants")
 local cw, ch, cd = constants.chunkWidth, constants.chunkHeight, constants.chunkDepth
+local bw, bh, bd = constants.blockWidth, constants.blockHeight, constants.blockDepth
 local detmath = require("lib.detmath")
 local blockHash = require("systems.blockHash")
 local bhDecode = blockHash.decode
 local bhEncodeForTerrainString = blockHash.encodeForTerrainString
+local bhEncodeForBump = blockHash.encodeForBump
 local segmentCast = require("systems.segmentCast")
+local blockTypes = require("registry").terrainByIndex
 
 local modifyChunk = {}
 
@@ -27,14 +30,6 @@ do
 	end
 end
 
-local chunksToUpdate, lenChunksToUpdate = {}, 0
-function modifyChunk.updateChunkMeshes(chunks)
-	for i = 1, lenChunksToUpdate do
-		chunksToUpdate[i]:updateMesh(chunks)
-	end
-	chunksToUpdate, lenChunksToUpdate = {}, 0
-end
-
 local function blocksOnlyFilter(item)
 	return type(item) == "number"
 end
@@ -54,7 +49,7 @@ function modifyChunk.damageBlocks(entity, will, world, blockDamages)
 	end
 end
 
-function modifyChunk.doDamages(world, blockDamages)
+function modifyChunk.doDamages(world, blockDamages, chunksToUpdate)
 	for hash, damageDealt in pairs(blockDamages) do
 		local x, y, z, chunkId = bhDecode(hash)
 		local chunk = world.chunksById[chunkId]
@@ -70,8 +65,7 @@ function modifyChunk.doDamages(world, blockDamages)
 			chunk.metadata = replaceChar(chunk.metadata, index, string.char(currentMetadata + damageDealt))
 		end
 		
-		lenChunksToUpdate = lenChunksToUpdate + 1
-		chunksToUpdate[lenChunksToUpdate] = chunk
+		chunksToUpdate[chunk] = true
 		
 		local chunks = world.chunks
 		local cx, cy, cz = chunk.x, chunk.y, chunk.z
@@ -81,33 +75,122 @@ function modifyChunk.doDamages(world, blockDamages)
 			y == 0, y == ch - 1,
 			z == 0, z == cd - 1
 		
-		if xn then local chunkToAdd = get(get(get(chunks, cx-1), cy), cz) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
-		if xn and yn then local chunkToAdd = get(get(get(chunks, cx-1), cy-1), cz) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
-		if xn and yp then local chunkToAdd = get(get(get(chunks, cx-1), cy+1), cz) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
-		if xn and zn then local chunkToAdd = get(get(get(chunks, cx-1), cy), cz-1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
-		if xn and zp then local chunkToAdd = get(get(get(chunks, cx-1), cy), cz+1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
-		if yn and zn then local chunkToAdd = get(get(get(chunks, cx), cy-1), cz-1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
-		if yn then local chunkToAdd = get(get(get(chunks, cx), cy-1), cz) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
-		if yn and zp then local chunkToAdd = get(get(get(chunks, cx), cy-1), cz+1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
-		if zn then local chunkToAdd = get(get(get(chunks, cx), cy), cz-1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
-		if zp then local chunkToAdd = get(get(get(chunks, cx), cy), cz+1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
-		if yp and zn then local chunkToAdd = get(get(get(chunks, cx), cy+1), cz-1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
-		if yp then local chunkToAdd = get(get(get(chunks, cx), cy+1), cz) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
-		if yp and zp then local chunkToAdd = get(get(get(chunks, cx), cy+1), cz+1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
-		if xp then local chunkToAdd = get(get(get(chunks, cx+1), cy), cz) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
-		if xp and yn then local chunkToAdd = get(get(get(chunks, cx+1), cy-1), cz) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
-		if xp and yp then local chunkToAdd = get(get(get(chunks, cx+1), cy+1), cz) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
-		if xp and zn then local chunkToAdd = get(get(get(chunks, cx+1), cy), cz-1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
-		if xp and zp then local chunkToAdd = get(get(get(chunks, cx+1), cy), cz+1) if chunkToAdd then lenChunksToUpdate = lenChunksToUpdate + 1 chunksToUpdate[lenChunksToUpdate] = chunkToAdd end end
+		if xn then        chunksToUpdate[ get(get(get(chunks, cx-1), cy),   cz)   ] = true  end
+		if xn and yn then chunksToUpdate[ get(get(get(chunks, cx-1), cy-1), cz)   ] = true  end
+		if xn and yp then chunksToUpdate[ get(get(get(chunks, cx-1), cy+1), cz)   ] = true  end
+		if xn and zn then chunksToUpdate[ get(get(get(chunks, cx-1), cy),   cz-1) ] = true  end
+		if xn and zp then chunksToUpdate[ get(get(get(chunks, cx-1), cy),   cz+1) ] = true  end
+		if yn and zn then chunksToUpdate[ get(get(get(chunks, cx),   cy-1), cz-1) ] = true  end
+		if yn then        chunksToUpdate[ get(get(get(chunks, cx),   cy-1), cz)   ] = true  end
+		if yn and zp then chunksToUpdate[ get(get(get(chunks, cx),   cy-1), cz+1) ] = true  end
+		if zn then        chunksToUpdate[ get(get(get(chunks, cx),   cy),   cz-1) ] = true  end
+		if zp then        chunksToUpdate[ get(get(get(chunks, cx),   cy),   cz+1) ] = true  end
+		if yp and zn then chunksToUpdate[ get(get(get(chunks, cx),   cy+1), cz-1) ] = true  end
+		if yp then        chunksToUpdate[ get(get(get(chunks, cx),   cy+1), cz)   ] = true  end
+		if yp and zp then chunksToUpdate[ get(get(get(chunks, cx),   cy+1), cz+1) ] = true  end
+		if xp then        chunksToUpdate[ get(get(get(chunks, cx+1), cy),   cz)   ] = true  end
+		if xp and yn then chunksToUpdate[ get(get(get(chunks, cx+1), cy-1), cz)   ] = true  end
+		if xp and yp then chunksToUpdate[ get(get(get(chunks, cx+1), cy+1), cz)   ] = true  end
+		if xp and zn then chunksToUpdate[ get(get(get(chunks, cx+1), cy),   cz-1) ] = true  end
+		if xp and zp then chunksToUpdate[ get(get(get(chunks, cx+1), cy),   cz+1) ] = true  end
 	end
 end
 
-function modifyChunk.buildBlocks()
-	
+local floor = math.floor
+function modifyChunk.buildBlocks(entity, will, world, blockBuildings, blockMetadataBuildings)
+	if will and will.build then
+		segmentCast(entity, world.bumpWorld,
+			function(hashOfBlockBuildingOn, info)
+				local x, y, z, chunkId = bhDecode(hashOfBlockBuildingOn)
+				x, y, z =
+					x + info.normalX,
+					y + info.normalY,
+					z + info.normalZ
+				local dx, dy, dz =
+					x == -1 and -1 or x == cw and 1 or 0,
+					y == -1 and -1 or y == ch and 1 or 0,
+					z == -1 and -1 or z == cd and 1 or 0
+				x, y, z =
+					x % cw,
+					y % ch,
+					z % cd
+				local chunk = world.chunksById[chunkId]
+				-- If chunk is different, account for it ("x, y, and z refer to the location of the chunk in there")
+				if dx + dy + dz ~= 0 then -- only one can be non-zero
+					local x, y, z = chunk.x, chunk.y, chunk.z
+					chunk = get(get(get(world.chunks, x + dx), y + dy), z + dz)
+					if not chunk then
+						return -- TEMP: for now
+					end
+					chunkId = chunk.id
+				end
+				
+				local localHashOfBlockToBuildInto = bhEncodeForTerrainString(x, y, z)
+				
+				-- local blockType = blockTypes[string.byte(string.sub(chunk.terrain, localHashOfBlockToBuildInto, localHashOfBlockToBuildInto))]
+				-- if not blockType.replaceable then
+				if string.sub(chunk.terrain, localHashOfBlockToBuildInto, localHashOfBlockToBuildInto) ~= string.char(0) then
+					return
+				end
+				
+				local hashOfBlockToBuildInto = bhEncodeForBump(x, y, z, chunkId)
+				if blockBuildings[hashOfBlockToBuildInto] then
+					blockBuildings[hashOfBlockToBuildInto] = "conflict"
+				else
+					blockBuildings[hashOfBlockToBuildInto] = --entity.blockToBuild.id
+					1
+					blockMetadataBuildings[hashOfBlockToBuildInto] = entity.metadataOfBlockToBuild or 0
+				end
+			end,
+			blocksOnlyFilter
+		)
+	end
 end
 
-function modifyChunk.doBuildings()
-	
+function modifyChunk.doBuildings(world, blockBuildings, blockMetadataBuildings, chunksToUpdate)
+	for hash, block in pairs(blockBuildings) do
+		if block ~= "conflict" then
+			local x, y, z, chunkId = bhDecode(hash)
+			local chunk = world.chunksById[chunkId]
+			local localHash = bhEncodeForTerrainString(x, y, z)
+			
+			chunk.terrain = replaceChar(chunk.terrain, localHash, string.char(block))
+			chunk.metadata = replaceChar(chunk.metadata, localHash, string.char(blockMetadataBuildings[hash]))
+			local cx, cy, cz = chunk.x, chunk.y, chunk.z
+			world.bumpWorld:add(hash,
+				(x + cx * cw) * bw,
+				(y + cy * ch) * bh,
+				(z + cz * cd) * bd,
+				bw, bh, bd
+			)
+			
+			chunksToUpdate[chunk] = true
+			local chunks = world.chunks
+			local xn, xp, yn, yp, zn, zp =
+				x == 0, x == cw - 1,
+				y == 0, y == ch - 1,
+				z == 0, z == cd - 1
+			
+				if xn then        chunksToUpdate[ get(get(get(chunks, cx-1), cy),   cz)   ] = true  end
+				if xn and yn then chunksToUpdate[ get(get(get(chunks, cx-1), cy-1), cz)   ] = true  end
+				if xn and yp then chunksToUpdate[ get(get(get(chunks, cx-1), cy+1), cz)   ] = true  end
+				if xn and zn then chunksToUpdate[ get(get(get(chunks, cx-1), cy),   cz-1) ] = true  end
+				if xn and zp then chunksToUpdate[ get(get(get(chunks, cx-1), cy),   cz+1) ] = true  end
+				if yn and zn then chunksToUpdate[ get(get(get(chunks, cx),   cy-1), cz-1) ] = true  end
+				if yn then        chunksToUpdate[ get(get(get(chunks, cx),   cy-1), cz)   ] = true  end
+				if yn and zp then chunksToUpdate[ get(get(get(chunks, cx),   cy-1), cz+1) ] = true  end
+				if zn then        chunksToUpdate[ get(get(get(chunks, cx),   cy),   cz-1) ] = true  end
+				if zp then        chunksToUpdate[ get(get(get(chunks, cx),   cy),   cz+1) ] = true  end
+				if yp and zn then chunksToUpdate[ get(get(get(chunks, cx),   cy+1), cz-1) ] = true  end
+				if yp then        chunksToUpdate[ get(get(get(chunks, cx),   cy+1), cz)   ] = true  end
+				if yp and zp then chunksToUpdate[ get(get(get(chunks, cx),   cy+1), cz+1) ] = true  end
+				if xp then        chunksToUpdate[ get(get(get(chunks, cx+1), cy),   cz)   ] = true  end
+				if xp and yn then chunksToUpdate[ get(get(get(chunks, cx+1), cy-1), cz)   ] = true  end
+				if xp and yp then chunksToUpdate[ get(get(get(chunks, cx+1), cy+1), cz)   ] = true  end
+				if xp and zn then chunksToUpdate[ get(get(get(chunks, cx+1), cy),   cz-1) ] = true  end
+				if xp and zp then chunksToUpdate[ get(get(get(chunks, cx+1), cy),   cz+1) ] = true  end
+		end
+	end
 end
 
 return modifyChunk

@@ -18,7 +18,7 @@ registry.terrainByName, registry.terrainByIndex = forNameIn("registry.terrain.",
 	end,
 	nil, true
 )
-local air = {name = "air", index = 0, invisible = true}
+local air = {name = "air", index = 0, invisible = true, replaceable = true}
 registry.terrainByName.air, registry.terrainByIndex[0] = air, air
 local terrainClone = require("registry.terrainClone")
 terrainClone.terrainByName, terrainClone.terrainByIndex = registry.terrainByName, registry.terrainByIndex
