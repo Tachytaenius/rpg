@@ -13,7 +13,7 @@ local suit, bump, list, detmath, cpml =
 	require("lib.detmath"),
 	require("lib.cpml")
 
-local think, getWill, move, newChunk, scene, input, ui, takeScreenshot, newEntity, modifyChunk =
+local think, getWill, move, newChunk, scene, input, ui, takeScreenshot, newEntity, modifyChunk, chunkManager =
 	require("systems.think"),
 	require("systems.getWill"),
 	require("systems.move"),
@@ -23,7 +23,8 @@ local think, getWill, move, newChunk, scene, input, ui, takeScreenshot, newEntit
 	require("systems.ui"),
 	require("systems.takeScreenshot"),
 	require("systems.newEntity"),
-	require("systems.modifyChunk")
+	require("systems.modifyChunk"),
+	require("systems.chunkManager")
 
 local outlineShader
 local infoCanvas, contentCanvas
@@ -67,7 +68,8 @@ function love.load(args)
 			entities = list.new(),
 			chunks = {},
 			chunksById = {},
-			nextChunkId = 0,
+			freeChunkIdsToUse = {len = 0},
+			nextIdAfterChunkIdListEnd = 0, -- TODO: max chunk ID from cw, ch, cd and maximum integer
 			lights = list.new():add({isDirectional = true, angle={0.4, 0.8, 0.6}, colour={1, 1, 1}, strength = 3}),
 			gravityAmount = 9.8,
 			gravityMaxFallSpeed = 50
@@ -76,24 +78,19 @@ function love.load(args)
 		scene.cameraEntity = testmanPlayer
 		worldWidth, worldHeight, worldDepth = 4, 3, 4 -- TODO: HELLO I AM A GLOBAL NO NO NO BAD REEEE
 		for x = 0, worldWidth - 1 do
-			local chunksX = {}
-			world.chunks[x] = chunksX
 			for y = 0, worldHeight - 1 do
-				local chunksY = {}
-				chunksX[y] = chunksY
 				for z = 0, worldDepth - 1 do
-					local newChunk = newChunk(x, y, z, world.chunks, world.bumpWorld, world.seed, world.nextChunkId)
-					world.chunksById[world.nextChunkId] = newChunk
-					world.nextChunkId = world.nextChunkId + 1
-					chunksY[z] = newChunk
-				end
+					local newChunk = newChunk(x, y, z, world, true)
+				end 
 			end
 		end
 		
 		-- There's no point iterating the coords way if you're not going to use them.
 		for _, chunk in pairs(world.chunksById) do
-			chunk:updateMesh(world.chunks)
-			scene.chunksToDraw:add(chunk)
+			local removed = chunkManager.update(chunk, world)
+			if not removed then
+				scene.chunksToDraw:add(chunk)
+			end
 		end
 		
 	elseif args[1] == "load" then
@@ -270,7 +267,10 @@ function love.fixedUpdate(dt)
 	modifyChunk.doBuildings(world, blockBuildings, blockMetadataBuildings, chunksToUpdate)
 	
 	for chunk, _ in pairs(chunksToUpdate) do
-		chunk:updateMesh(world.chunks)
+		local removed = chunkManager.update(chunk, world)
+		if removed then
+			scene.chunksToDraw:remove(chunk)
+		end
 	end
 	
 	for i = 1, world.entities.size do
