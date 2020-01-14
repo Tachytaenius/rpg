@@ -1,86 +1,94 @@
 -- Deterministic maths functions for Lua
 -- By Tachytaenius
 
--- For determinism they rely on IEEE-754 compliance (very rarely missing) and consistent rounding modes (always present under LÖVE, if memory serves (TODO: Does it?))
-
 local tau = 6.28318530717958647692 -- Pi is also provided, of course :-)
 local e = 2.71828182845904523536
-local abs, floor, sqrt, modf, huge = math.abs, math.floor, math.sqrt, math.modf, math.huge
+local abs, floor, sqrt, modf, frexp, huge = math.abs, math.floor, math.sqrt, math.modf, math.frexp, math.huge
+
+-- x raised to an integer is not deterministic
+local function intPow(x, y)
+	local ret = 1
+	local absX = abs(x)
+	for _=1, absX do
+		ret = ret * x
+	end
+	return abs == x and ret or 1 / ret
+end
 
 local function exp(x)
 	local xint, xfract = modf(x)
-	local exint = e ^ xint -- x raised to an integer is deterministic (TODO: is it?!)
-	local exfract = 1 + xfract + (xfract ^ 2 / 2) + (xfract ^ 3 / 6) + (xfract ^ 4 / 24)
+	local exint = intPow(e, xint)
+	local exfract = 1 + xfract + (xfract*xfract / 2) + (xfract*xfract*xfract / 6) + (xfract*xfract*xfract*xfract / 24) -- for n = 0, 4 sum xfract^n/n!
 	return exint * exfract -- e ^ (xint + xfract)
 end
 
-local function todo() error("Not done yet.") end
+local powerTable = { -- 1+2^-i
+	1.5, 1.25, 1.125, 1.0625, 1.03125, 1.015625, 1.0078125, 1.00390625, 1.001953125, 1.0009765625, 1.00048828125, 1.000244140625, 1.0001220703125, 1.00006103515625, 1.000030517578125
+}
+local logTable = { -- log(1+2^-i)
+	0.40546510810816438486, 0.22314355131420976486, 0.11778303565638345574, 0.06062462181643483994, 0.03077165866675368733, 0.01550418653596525448, 0.00778214044205494896, 0.00389864041565732289, 0.00195122013126174934, 0.00097608597305545892, 0.00048816207950135119, 0.00024411082752736271, 0.00012206286252567737, 0.00006103329368063853, 0.00003051711247318638
+}
+local ln2 = 0.69314718055994530942 -- log(2)
 local function log(x)
-	todo()
+	local xmant, xexp = frexp(x)
+	if xmant == 0.5 then
+		return ln2 * (xexp-1)
+	end
+	local arg = xmant * 2
+	local prod = 1
+	local sum = 0
+	for i = 1, 7 do
+		local prod2 = prod * powerTable[i]
+		if prod2 < arg then
+			prod = prod2
+			sum = sum + logTable[i]
+		end
+	end
+	return sum + ln2 * (xexp - 1)
 end
+
 local function pow(x, y)
-	local logx = log(x) -- FIXME: no overhead
-	local power = y * logx
-	
-	local pint, pfract = modf(power)
-	local epint = e ^ pint
-	local epfract = 1 + pfract + (pfract ^ 2 / 2) + (pfract ^ 3 / 6) + (pfract ^ 4 / 24)
-	return epint * epfract
+	return exp(log(x)*y)
 end
 
 local function sin(x)
 	local over = floor(x / (tau / 2)) % 2 == 0 -- Get sign of sin(x)
 	x = tau/4 - x % (tau/2) -- Shift x into domain of approximation
-	local absolute = 1 - (20 * x^2) / (4 * x^2 + tau^2) -- https://www.desmos.com/calculator/o6gy67kqpg (should help to visualise what's going on)
+	local absolute = 1 - (20 * x*x) / (4 * x*x + tau*tau) -- https://www.desmos.com/calculator/o6gy67kqpg (should help to visualise what's going on)
 	return over and absolute or -absolute
 end
 
 local function cos(x)
 	local over = floor((tau/4 - x) / (tau / 2)) % 2 == 0
 	x = tau/4 - (tau/4 - x) % (tau/2)
-	local absolute = 1 - (20 * x^2) / (4 * x^2 + tau^2)
+	local absolute = 1 - (20 * x*x) / (4 * x*x + tau*tau)
 	return over and absolute or -absolute
 end
 
 local function tan(x)
-	-- return sin(x)/cos(x)
-	local s, c
-	do
-		local over = floor(x / (tau / 2)) % 2 == 0
-		local x = tau/4 - x % (tau/2)
-		local absolute = 1 - (20 * x^2) / (4 * x^2 + tau^2)
-		s = over and absolute or -absolute
-	end
-	-- TODO: Optimise it further than just copy-pasting the two functions into one
-	do
-		local over = floor((tau/4 - x) / (tau / 2)) % 2 == 0
-		local x = tau/4 - (tau/4 - x) % (tau/2)
-		local absolute = 1 - (20 * x^2) / (4 * x^2 + tau^2)
-		c = over and absolute or -absolute
-	end
-	return s/c
+	return sin(x)/cos(x)
 end
 
 local function asin(x)
 	local positiveX, x = x > 0, abs(x)
-	local resultForAbsoluteX = tau/4 - sqrt(tau^2 * (1 - x)) / (2 * sqrt(x + 4))
+	local resultForAbsoluteX = tau/4 - sqrt(tau*tau * (1 - x)) / (2 * sqrt(x + 4))
 	return positiveX and resultForAbsoluteX or -resultForAbsoluteX
 end
 
 local function acos(x)
 	local positiveX, x = x > 0, abs(x)
-	local resultForAbsoluteX = sqrt(tau^2 * (1 - x)) / (2 * sqrt(x + 4)) -- Only approximates acos(x) when x > 0
+	local resultForAbsoluteX = sqrt(tau*tau * (1 - x)) / (2 * sqrt(x + 4)) -- Only approximates acos(x) when x > 0
 	return positiveX and resultForAbsoluteX or -resultForAbsoluteX + tau/2
 end
 
 local function atan(x)
-	x = x / sqrt(1 + x^2)
+	x = x / sqrt(1 + x*x)
 	local positiveX, x = x > 0, abs(x)
-	local resultForAbsoluteX = tau/4 - sqrt(tau^2 * (1 - x)) / (2 * sqrt(x + 4))
+	local resultForAbsoluteX = tau/4 - sqrt(tau*tau * (1 - x)) / (2 * sqrt(x + 4))
 	return positiveX and resultForAbsoluteX or -resultForAbsoluteX
 end
 
--- TODO: Find a better name
+-- NOTE: Is "arg" a better name? (Argument of a complex number a+bi = "angle"(a,b).)
 local function angle(x, y)
 	local theta = atan(y/x)
 	theta = x == 0 and tau/4 * y / abs(y) or x < 0 and theta + tau/2 or theta
@@ -117,7 +125,6 @@ return {
 	exp = exp,
 	pow = pow,
 	log = log,
-	log10 = log10,
 	sin = sin,
 	cos = cos,
 	tan = tan,
@@ -128,7 +135,10 @@ return {
 	atan2 = atan2,
 	sinh = sinh,
 	cosh = cosh,
-	tanh = tanh
+	tanh = tanh,
+	asinh = asinh,
+	acosh = acosh,
+	atanh = atanh
 }
 
 -- Thanks!
