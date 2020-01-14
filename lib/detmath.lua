@@ -6,13 +6,24 @@ local e = 2.71828182845904523536
 local abs, floor, sqrt, modf, frexp, huge = math.abs, math.floor, math.sqrt, math.modf, math.frexp, math.huge
 
 -- x raised to an integer is not deterministic
-local function intPow(x, y)
-	local ret = 1
-	local absX = abs(x)
-	for _=1, absX do
-		ret = ret * x
+local function intPow(x, n) -- Exponentiation by squaring
+	if n == 0 then
+		return 1
+	elseif n < 0 then
+		x = 1 / x
+		n = -n
 	end
-	return abs == x and ret or 1 / ret
+	local y = 1
+	while n > 1 do
+		if n % 2 == 0 then -- even
+			n = n / 2
+		else -- odd
+			y = x * y
+			n = (n - 1) / 2
+		end
+		x = x * x
+	end
+	return x * y
 end
 
 local function exp(x)
