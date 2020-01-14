@@ -147,7 +147,7 @@ end
 
 function clamp(x, y)
 	if x ~= 0 and y ~= 0 then
-		local currentMag = math.sqrt(x^2 + y^2)
+		local currentMag = math.sqrt(x*x + y*y)
 		local xSize, ySize = math.abs(x), math.abs(y)
 		local maxMag = math.min(xSize, ySize)
 		x, y = x / currentMag * maxMag, y / currentMag * maxMag
