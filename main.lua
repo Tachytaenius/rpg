@@ -40,6 +40,8 @@ local previousFramePaused
 local mdx, mdy
 
 function love.load(args)
+	print(detmath.getRoundingMode())
+	
 	love.graphics.setMeshCullMode("back")
 	love.graphics.setDefaultFilter("nearest", "nearest")
 	love.graphics.setLineStyle("rough")

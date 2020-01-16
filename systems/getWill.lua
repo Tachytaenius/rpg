@@ -14,9 +14,13 @@ local function getWill(entity, mdx, mdy)
 	if strafeLeft then tvx = tvx - 1 end
 	if strafeRight then tvx = tvx + 1 end
 	crouch = crouch or entity.isCrouched
-	will.targetVelocityXMultiplier, will.targetVelocityZMultiplier =
-		tvx * (crouch and 0.1 or run and not crouch and 1 or 0.5),
-		tvz * (crouch and 0.1 or run and not crouch and 1 or 0.5)
+	if crouch then
+		tvx, tvz = tvx / 5, tvz / 5
+	end
+	if not run then
+		tvx, tvz = tvx / 2, tvz / 2
+	end
+	will.targetVelocityXMultiplier, will.targetVelocityZMultiplier = tvx, tvz
 	
 	-- crouch has the same jump height as walk. TODO maybe leap forwards instead?
 	will.targetVelocityYMultiplier = input.didFixedCommand("jump") and math.sqrt(run and 1 or 0.5) or 0

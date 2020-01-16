@@ -3,7 +3,52 @@
 
 local tau = 6.28318530717958647692 -- Pi is also provided, of course :-)
 local e = 2.71828182845904523536
-local abs, floor, sqrt, modf, frexp, huge = math.abs, math.floor, math.sqrt, math.modf, math.frexp, math.huge
+local abs, floor, sqrt, modf, frexp, ldexp, huge = math.abs, math.floor, math.sqrt, math.modf, math.frexp, math.ldexp, math.huge
+
+local getRoundingMode
+do
+	local modes = {
+		nearest_toEven = {2, 2, -2, -2},
+		nearest_truncate = {2, 3, -2, -3},
+		truncate = {1, 2, -1, -2},
+		ceiling = {2, 3, -1, -2},
+		floor = {1, 2, -2, -3}
+	}
+	
+	local input = {1.5, 2.5, -1.5, -2.5}
+	
+	local denormalSmallExponents = {
+		half = -24,
+		single = -149,
+		double = -1074,
+		quadruple = -16494,
+		octuple = -262378
+	}
+	
+	local normalSmallExponents = {
+		half = -14,
+		single = -126,
+		double = -1022,
+		quadruple = -16382,
+		octuple = -262142
+	}
+	
+	-- TODO: Test for all configurations
+	function getRoundingMode(type, noDenormals)
+		local small = ldexp(1, (noDenormals and normalSmallExponents or denormalSmallExponents)[type or "double"])
+		
+		for name, results in pairs(modes) do
+			local this = true
+			for i = 1, 4 do
+				if small * input[i] ~= small * results[i] then
+					this = false
+					break
+				end
+			end
+			if this then return name end
+		end
+	end
+end
 
 -- x raised to an integer is not deterministic
 local function intPow(x, n) -- Exponentiation by squaring
@@ -33,31 +78,35 @@ local function exp(x)
 	return exint * exfract -- e ^ (xint + xfract)
 end
 
-local powerTable = { -- 1+2^-i
-	1.5, 1.25, 1.125, 1.0625, 1.03125, 1.015625, 1.0078125, 1.00390625, 1.001953125, 1.0009765625, 1.00048828125, 1.000244140625, 1.0001220703125, 1.00006103515625, 1.000030517578125
-}
-local logTable = { -- log(1+2^-i)
-	0.40546510810816438486, 0.22314355131420976486, 0.11778303565638345574, 0.06062462181643483994, 0.03077165866675368733, 0.01550418653596525448, 0.00778214044205494896, 0.00389864041565732289, 0.00195122013126174934, 0.00097608597305545892, 0.00048816207950135119, 0.00024411082752736271, 0.00012206286252567737, 0.00006103329368063853, 0.00003051711247318638
-}
-local ln2 = 0.69314718055994530942 -- log(2)
-local function log(x)
-	local xmant, xexp = frexp(x)
-	if xmant == 0.5 then
-		return ln2 * (xexp-1)
-	end
-	local arg = xmant * 2
-	local prod = 1
-	local sum = 0
-	for i = 1, 7 do
-		local prod2 = prod * powerTable[i]
-		if prod2 < arg then
-			prod = prod2
-			sum = sum + logTable[i]
+local log
+do
+	local powerTable = { -- 1+2^-i
+		1.5, 1.25, 1.125, 1.0625, 1.03125, 1.015625, 1.0078125, 1.00390625, 1.001953125, 1.0009765625, 1.00048828125, 1.000244140625, 1.0001220703125, 1.00006103515625, 1.000030517578125
+	}
+	local logTable = { -- log(1+2^-i)
+		0.40546510810816438486, 0.22314355131420976486, 0.11778303565638345574, 0.06062462181643483994, 0.03077165866675368733, 0.01550418653596525448, 0.00778214044205494896, 0.00389864041565732289, 0.00195122013126174934, 0.00097608597305545892, 0.00048816207950135119, 0.00024411082752736271, 0.00012206286252567737, 0.00006103329368063853, 0.00003051711247318638
+	}
+	local ln2 = 0.69314718055994530942 -- log(2)
+	function log(x)
+		local xmant, xexp = frexp(x)
+		if xmant == 0.5 then
+			return ln2 * (xexp-1)
 		end
+		local arg = xmant * 2
+		local prod = 1
+		local sum = 0
+		for i = 1, 15 do
+			local prod2 = prod * powerTable[i]
+			if prod2 < arg then
+				prod = prod2
+				sum = sum + logTable[i]
+			end
+		end
+		return sum + ln2 * (xexp - 1)
 	end
-	return sum + ln2 * (xexp - 1)
 end
 
+-- NOTE: Pretty big error magnification... :-/
 local function pow(x, y)
 	return exp(log(x)*y)
 end
@@ -99,7 +148,11 @@ local function atan(x)
 	return positiveX and resultForAbsoluteX or -resultForAbsoluteX
 end
 
--- NOTE: Is "arg" a better name? (Argument of a complex number a+bi = "angle"(a,b).)
+local function distance(x, y)
+	return sqrt(x*x + y*y)
+end
+
+-- TODO: Is "arg" a better name? (Argument of a complex number a+bi = "angle"(a,b))
 local function angle(x, y)
 	local theta = atan(y/x)
 	theta = x == 0 and tau/4 * y / abs(y) or x < 0 and theta + tau/2 or theta
@@ -130,11 +183,13 @@ local function tanh(x)
 end
 
 return {
+	getRoundingMode = getRoundingMode,
 	tau = tau,
 	pi = tau / 2, -- Choose whichever you find personally gratifying. I use tau in this library but it's up to you
 	e = e,
 	exp = exp,
 	pow = pow,
+	intPow = intPow,
 	log = log,
 	sin = sin,
 	cos = cos,
@@ -142,6 +197,7 @@ return {
 	asin = asin,
 	acos = acos,
 	atan = atan,
+	distance = distance,
 	angle = angle,
 	atan2 = atan2,
 	sinh = sinh,
