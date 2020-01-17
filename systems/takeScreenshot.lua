@@ -13,7 +13,7 @@ return function(canvas)
 	
 	local current = 0
 	for _, filename in pairs(love.filesystem.getDirectoryItems("screenshots")) do
-		if string.match(filename, "^[1-9]%d*%.png$") then -- Make sure this file could have been created by this function
+		if string.match(filename, "^%d+%.png$") then -- Make sure this file could have been created by this function
 			current = math.max(current, tonumber(string.sub(filename, 1, -5)))
 		end
 	end

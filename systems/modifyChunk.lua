@@ -129,8 +129,6 @@ function modifyChunk.buildBlocks(entity, will, world, blockBuildings, blockMetad
 				
 				local localHashOfBlockToBuildInto = bhEncodeForTerrainString(x, y, z)
 				
-				-- local blockType = blockTypes[string.byte(string.sub(chunk.terrain, localHashOfBlockToBuildInto, localHashOfBlockToBuildInto))]
-				-- if not blockType.replaceable then
 				if string.sub(chunk.terrain, localHashOfBlockToBuildInto, localHashOfBlockToBuildInto) ~= string.char(0) then
 					return
 				end

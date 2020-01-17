@@ -108,7 +108,10 @@ end
 
 -- NOTE: Pretty big error magnification... :-/
 local function pow(x, y)
-	return exp(log(x)*y)
+	local yint, yfract = modf(y)
+	local xyint = intPow(x, yint)
+	local xyfract = exp(log(x)*yfract)
+	return xyint * xyfract -- x ^ (yint + yfract)
 end
 
 local function sin(x)

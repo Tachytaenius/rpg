@@ -17,8 +17,8 @@ local function generate(cx, cy, cz, chunkId, bumpWorld, seed)
 	local ox, oy, oz = cw * cx, ch * cy, cd * cz
 	
 	for x = 0, cw - 1 do
+		local blockX = bw * (ox + x)
 		for z = 0, cd - 1 do
-			local blockX = bw * (ox + x)
 			local blockZ = bd * (oz + z)
 			local terrainHeight = terrainHeight(blockX, blockZ)
 			for y = 0, ch - 1 do

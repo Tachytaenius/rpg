@@ -13,7 +13,7 @@ local suit, bump, list, detmath, cpml =
 	require("lib.detmath"),
 	require("lib.cpml")
 
-local think, getWill, move, newChunk, scene, input, ui, takeScreenshot, newEntity, modifyChunk, chunkManager =
+local think, getWill, move, newChunk, scene, input, ui, takeScreenshot, newEntity, modifyChunk, chunkManager, save, load =
 	require("systems.think"),
 	require("systems.getWill"),
 	require("systems.move"),
@@ -24,7 +24,9 @@ local think, getWill, move, newChunk, scene, input, ui, takeScreenshot, newEntit
 	require("systems.takeScreenshot"),
 	require("systems.newEntity"),
 	require("systems.modifyChunk"),
-	require("systems.chunkManager")
+	require("systems.chunkManager"),
+	require("systems.save"),
+	require("systems.load")
 
 local outlineShader
 local infoCanvas, contentCanvas
@@ -94,10 +96,9 @@ function love.load(args)
 				scene.chunksToDraw:add(chunk)
 			end
 		end
-		
 	elseif args[1] == "load" then
 		local path = args[2]
-		error("Go away, this isn't done yet!")
+		world = load(path)
 	else
 		error("Invalid first argument: " .. args[1])
 	end
@@ -358,5 +359,5 @@ function love.mousemoved(x, y, dx, dy)
 end
 
 function love.quit()
-	
+	save(world)
 end
