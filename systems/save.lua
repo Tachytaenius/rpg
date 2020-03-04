@@ -2,6 +2,10 @@ local json = require("lib.json")
 local warn = require("systems.warn")
 
 local function save(world)
+	if not world.unsaved then
+		warn("This world has been saved already.")
+	end
+	
 	local info = love.filesystem.getInfo("saves")
 	if not info then
 		print("Couldn't find saves folder. Creating")
@@ -22,7 +26,7 @@ local function save(world)
 	local path = current + 1
 	
 	if not love.filesystem.createDirectory("saves/" .. path) then
-		return -- I think it'd be deliberate if you made a directory between here and that loop, so no need to say anything
+		return -- I'm not sure what would be a sensible thing to say if you made a directory between here and that loop
 	end
 	
 	do
@@ -44,6 +48,7 @@ local function save(world)
 		end
 	end
 	
+	world.unsaved = false
 	return true
 end
 

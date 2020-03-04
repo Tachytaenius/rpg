@@ -41,9 +41,13 @@ local previousFramePaused
 -- Used for mouse movement
 local mdx, mdy
 
+function love.handlers.save()
+	save(world)
+end
+
+-- print(detmath.getRoundingMode())
+
 function love.load(args)
-	print(detmath.getRoundingMode())
-	
 	love.graphics.setMeshCullMode("back")
 	love.graphics.setDefaultFilter("nearest", "nearest")
 	love.graphics.setLineStyle("rough")
@@ -76,7 +80,8 @@ function love.load(args)
 			nextIdAfterChunkIdListEnd = 0, -- TODO: max chunk ID from cw, ch, cd and maximum integer
 			lights = list.new():add({isDirectional = true, angle={0.4, 0.8, 0.6}, colour={1, 1, 1}, strength = 3}),
 			gravityAmount = 9.8,
-			gravityMaxFallSpeed = 50
+			gravityMaxFallSpeed = 50,
+			unsaved = true
 		}
 		local testmanPlayer = newEntity(world, "testman", 4, 9, 4, 1)
 		scene.cameraEntity = testmanPlayer
@@ -232,6 +237,7 @@ function love.frameUpdate(dt)
 end
 
 function love.fixedUpdate(dt)
+	world.unsaved = true
 	local blockDamages, blockBuildings, blockMetadataBuildings = {}, {}, {}
 	local bumpCubesToUpdate, chunksToUpdate = {}, {}
 	local wills = {}
@@ -359,5 +365,9 @@ function love.mousemoved(x, y, dx, dy)
 end
 
 function love.quit()
-	save(world)
+	if world.unsaved then
+		if ui.current and ui.current.type == "quitConfirmation" then return false end
+		ui.construct("quitConfirmation")
+		return true
+	end
 end

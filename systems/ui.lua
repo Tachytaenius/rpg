@@ -7,6 +7,7 @@ local constants, settings, assets =
 
 local uiNames = [[
 	plainPause settings
+	quitConfirmation
 ]]
 
 local uis = require("fornamein")("uis.", uiNames)
