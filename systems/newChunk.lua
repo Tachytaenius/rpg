@@ -14,7 +14,7 @@ return function(x, y, z, world, notEmpty)
 	chunkManager.add(world, ret)
 	
 	if notEmpty then
-		ret.terrain, ret.metadata = generate(x, y, z, ret.id, world.bumpWorld, world.seed)
+		ret.terrain, ret.metadata = generate(x, y, z, ret.id, world)
 	else
 		ret.terrain, ret.metadata = emptyBlocks, emptyBlocks
 	end

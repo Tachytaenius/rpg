@@ -19,8 +19,8 @@ function ui.construct(type)
 	
 	ui.current = {
 		type = type,
-		mouseX = constants.width / 2,
-		mouseY = constants.height / 2
+		mouseX = ui.current and ui.current.mouseX or constants.width / 2,
+		mouseY = ui.current and ui.current.mouseY or constants.height / 2
 	}
 	
 	uis[type].construct(ui.current)

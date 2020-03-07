@@ -56,7 +56,7 @@ function scene.init()
 	scene.camera = {near = 0.0001, far = 30}
 end
 
-local getCameraTransform, renderGBuffer, sendGBufferToLightingShader, finishingTouches
+local getCameraTransform, renderGBuffer, sendGBufferToLightingShader, renderLights, finishingTouches
 
 function scene.render(world)
 	renderGBuffer(world)

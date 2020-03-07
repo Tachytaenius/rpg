@@ -133,6 +133,11 @@ function modifyChunk.buildBlocks(entity, will, world, blockBuildings, blockMetad
 					return
 				end
 				
+				local itemsInTargetSpace, lenItemsInTargetSpace = world.bumpWorld:queryCube((x + chunk.x * cw) * bw, (y + chunk.y * ch) * bh, (z + chunk.z * cd) * bd, bw, bh, bd)
+				if lenItemsInTargetSpace > 0 then
+					return
+				end
+				
 				local hashOfBlockToBuildInto = bhEncodeForBump(x, y, z, chunkId)
 				if blockBuildings[hashOfBlockToBuildInto] then
 					blockBuildings[hashOfBlockToBuildInto] = "conflict"

@@ -14,11 +14,9 @@ function quitConfirmation.update(state)
 	if suit.Button("Save and quit", suit.layout:row(constants.width / 3, assets.ui.font.value:getHeight() + 3)).hit then
 		love.event.push("save")
 		love.event.quit()
-		warn("The game was saved but failed to quit!")
 	end
 	if suit.Button("Quit without saving", suit.layout:row()).hit then
 		love.event.quit()
-		warn("The (unsved) game failed to quit!")
 	end
 	if suit.Button("Don't quit", suit.layout:row()).hit then
 		return true

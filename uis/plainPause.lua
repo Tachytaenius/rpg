@@ -16,6 +16,9 @@ function plainPause.update(state)
 	if suit.Button("Settings", suit.layout:row()).hit then
 		return true, "settings" -- Replace UI with settings UI
 	end
+	if suit.Button("Save", suit.layout:row()).hit then
+		love.event.push("save")
+	end
 	if suit.Button("Quit", suit.layout:row()).hit then
 		love.event.quit()
 	end

@@ -157,7 +157,7 @@ function clamp(x, y)
 	return x, y
 end
 
-function response(world, col, x,y,z, w,h,d, goalX, goalY, goalZ, filter)
+function response(world, col, x,y,z, w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
 	goalX = goalX or x
 	goalY = goalY or y
 	goalZ = goalZ or z
@@ -185,7 +185,7 @@ function response(world, col, x,y,z, w,h,d, goalX, goalY, goalZ, filter)
 	col.proper = {x = goalX, y = goalY, z = goalZ}
 	
 	x, y, z = tch.x, tch.y, tch.z
-	local cols, len = world:project(entity, x,y,z, w,h,d, goalX, goalY, goalZ, filter)
+	local cols, len = world:project(entity, x,y,z, w,h,d, goalX, goalY, goalZ, filter, alreadyVisited)
 	
 	return goalX, goalY, goalZ, cols, len
 end

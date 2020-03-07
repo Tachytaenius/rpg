@@ -6,12 +6,13 @@ local constants, registry, settings, assets =
 	require("systems.settings"),
 	require("assets")
 
-local suit, bump, list, detmath, cpml =
+local suit, bump, list, detmath, cpml, zimblegz =
 	require("lib.suit"),
 	require("lib.bump-3dpd"),
 	require("lib.list"),
 	require("lib.detmath"),
-	require("lib.cpml")
+	require("lib.cpml"),
+	require("lib.zimblegz")
 
 local think, getWill, move, newChunk, scene, input, ui, takeScreenshot, newEntity, modifyChunk, chunkManager, save, load =
 	require("systems.think"),
@@ -73,6 +74,7 @@ function love.load(args)
 			seed = seed,
 			rng = love.math.newRandomGenerator(seed),
 			bumpWorld = bump.newWorld(constants.bumpCellSize),
+			simplexer = zimblegz.newSimplexer(seed),
 			entities = list.new(),
 			chunks = {},
 			chunksById = {},
@@ -85,7 +87,7 @@ function love.load(args)
 		}
 		local testmanPlayer = newEntity(world, "testman", 4, 9, 4, 1)
 		scene.cameraEntity = testmanPlayer
-		worldWidth, worldHeight, worldDepth = 4, 3, 4 -- TODO: HELLO I AM A GLOBAL NO NO NO BAD REEEE
+		local worldWidth, worldHeight, worldDepth = 16, 4, 16
 		for x = 0, worldWidth - 1 do
 			for y = 0, worldHeight - 1 do
 				for z = 0, worldDepth - 1 do
