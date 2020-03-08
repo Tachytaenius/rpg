@@ -1,5 +1,8 @@
 math.tau = math.pi * 2 -- detmath.tau is just as good-- they're both just plain floats, detmath's isn't slower in any way-- but when you're not using any other parts of detmath, requiring it just for tau isn't very nice
 
+local ffi = require("ffi")
+local uint64 = ffi.typeof("uint64_t")
+
 local constants, registry, settings, assets =
 	require("constants"),
 	require("registry"), -- NOTE: registry must be required before assets because of terrainClone hack
@@ -69,10 +72,17 @@ function love.load(args)
 	love.graphics.setFont(assets.ui.font.value)
 	
 	if not args[1] or args[1] == "new" then
-		local seed = args[2] or love.math.random(1000) -- TODO: seed safety?
+		local max32 = math.ldexp(1, 32)-1
+		local seed1 = args[2] or love.math.random(max32+1)-1
+		local seed2 = args[3] or 0
+		assert(math.floor(seed1) == seed1 and seed1 >= 0 and seed1 < max32, "First seed is not a 32-bit integer")
+		assert(math.floor(seed2) == seed2 and seed2 >= 0 and seed2 < max32, "Second seed is not a 32-bit integer")
+		local seed = seed2 * uint64(max32) + seed1
 		world = {
-			seed = seed,
-			rng = love.math.newRandomGenerator(seed),
+			seed1 = seed1, -- normal lua number
+			seed2 = seed2, -- "
+			seed = seed, -- unsigned long long int
+			rng = love.math.newRandomGenerator(seed1, seed2),
 			bumpWorld = bump.newWorld(constants.bumpCellSize),
 			simplexer = zimblegz.newSimplexer(seed),
 			entities = list.new(),
