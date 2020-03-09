@@ -166,72 +166,147 @@ function chunkManager.update(self, world)
 	
 	local verts, lenVerts = {}, 0
 	
-	for x = 0, cw - 1 do
-		for y = 0, ch - 1 do
-			for z = 0, cd - 1 do
-				-- tb means "this block"
-				local tb, tbstate, tbdmg = chunkManager.getBlock(self, x, y, z)
-				local tbx, tby, tbz = selfX * cw + x, selfY * ch + y, selfZ * cd + z
-				if canDraw(tb) then
+	if unsmoothed then
+		for x = 0, cw - 1 do
+			for y = 0, ch - 1 do
+				for z = 0, cd - 1 do
+					-- tb means "this block"
+					local tb, tbstate, tbdmg = chunkManager.getBlock(self, x, y, z)
+					local tbx, tby, tbz = selfX * cw + x, selfY * ch + y, selfZ * cd + z
+					if canDraw(tb) then
+						local block = terrainByIndex[tb]
+						local name = block.name
+						local getTextureAtlasOffset = block.getTextureAtlasOffset
+						local u1, v1, u2, v2 = u1s[name], v1s[name], u2s[name], v2s[name]
+						
+						local nzz, nzzstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y, z)
+						local pzz, pzzstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y, z)
+						local znz, znzstate = getBlockFromSelfOrNeighbours(chunks, self, x, y - 1, z)
+						local zpz, zpzstate = getBlockFromSelfOrNeighbours(chunks, self, x, y + 1, z)
+						local zzn, zznstate = getBlockFromSelfOrNeighbours(chunks, self, x, y, z - 1)
+						local zzp, zzpstate = getBlockFromSelfOrNeighbours(chunks, self, x, y, z + 1)
+						local nnz, nnzstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y - 1, z)
+						local pnz, pnzstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y - 1, z)
+						local npz, npzstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y + 1, z)
+						local ppz, ppzstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y + 1, z)
+						local nzn, nznstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y, z - 1)
+						local pzn, pznstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y, z - 1)
+						local nzp, nzpstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y, z + 1)
+						local pzp, pzpstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y, z + 1)
+						local zpp, zppstate = getBlockFromSelfOrNeighbours(chunks, self, x, y + 1, z + 1)
+						local zpn, zpnstate = getBlockFromSelfOrNeighbours(chunks, self, x, y + 1, z - 1)
+						local znp, znpstate = getBlockFromSelfOrNeighbours(chunks, self, x, y - 1, z + 1)
+						local znn, znnstate = getBlockFromSelfOrNeighbours(chunks, self, x, y - 1, z - 1)
+						
+						if canDraw(tb, nzz) then
+							local textureIndex = getTextureAtlasOffset and getTextureAtlasOffset("nx", tbstate, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn, nzzstate, pzzstate, znzstate, zpzstate, zznstate, zzpstate, nnzstate, pnzstate, npzstate, ppzstate, nznstate, pznstate, nzpstate, pzpstate, zppstate, zpnstate, znpstate, znnstate) or 0
+							local vOffset = textureVLength * textureIndex
+							addRect(verts, lenVerts, "nyz", tbx * bw, tby * bh, tbz * bd, bh, bd, u1, v1 + vOffset, u2, v2 + vOffset, tbdmg)
+							lenVerts = lenVerts + 6
+						end
+						if canDraw(tb, pzz) then
+							local textureIndex = getTextureAtlasOffset and getTextureAtlasOffset("px", tbstate, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn, nzzstate, pzzstate, znzstate, zpzstate, zznstate, zzpstate, nnzstate, pnzstate, npzstate, ppzstate, nznstate, pznstate, nzpstate, pzpstate, zppstate, zpnstate, znpstate, znnstate) or 0
+							local vOffset = textureVLength * textureIndex
+							addRect(verts, lenVerts, "pyz", (tbx + 1) * bw, tby * bh, tbz * bd, bh, bd, u1, v1 + vOffset, u2, v2 + vOffset, tbdmg)
+							lenVerts = lenVerts + 6
+						end
+						if canDraw(tb, zzn) then
+							local textureIndex = getTextureAtlasOffset and getTextureAtlasOffset("nz", tbstate, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn, nzzstate, pzzstate, znzstate, zpzstate, zznstate, zzpstate, nnzstate, pnzstate, npzstate, ppzstate, nznstate, pznstate, nzpstate, pzpstate, zppstate, zpnstate, znpstate, znnstate) or 0
+							local vOffset = textureVLength * textureIndex
+							addRect(verts, lenVerts, "nxy", tbx * bw, tby * bh, tbz * bd, bw, bh, u1, v1 + vOffset, u2, v2 + vOffset, tbdmg)
+							lenVerts = lenVerts + 6
+						end
+						if canDraw(tb, zzp) then
+							local textureIndex = getTextureAtlasOffset and getTextureAtlasOffset("pz", tbstate, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn, nzzstate, pzzstate, znzstate, zpzstate, zznstate, zzpstate, nnzstate, pnzstate, npzstate, ppzstate, nznstate, pznstate, nzpstate, pzpstate, zppstate, zpnstate, znpstate, znnstate) or 0
+							local vOffset = textureVLength * textureIndex
+							addRect(verts, lenVerts, "pxy", tbx * bw, tby * bh, (tbz + 1) * bd, bw, bh, u1, v1 + vOffset, u2, v2 + vOffset, tbdmg)
+							lenVerts = lenVerts + 6
+						end
+						if canDraw(tb, znz) then
+							local textureIndex = getTextureAtlasOffset and getTextureAtlasOffset("ny", tbstate, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn, nzzstate, pzzstate, znzstate, zpzstate, zznstate, zzpstate, nnzstate, pnzstate, npzstate, ppzstate, nznstate, pznstate, nzpstate, pzpstate, zppstate, zpnstate, znpstate, znnstate) or 0
+							local vOffset = textureVLength * textureIndex
+							addRect(verts, lenVerts, "nxz", tbx * bw, tby * bh, tbz * bd, bw, bd, u1, v1 + vOffset, u2, v2 + vOffset, tbdmg)
+							lenVerts = lenVerts + 6
+						end
+						if canDraw(tb, zpz) then
+							local textureIndex = getTextureAtlasOffset and getTextureAtlasOffset("py", tbstate, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn, nzzstate, pzzstate, znzstate, zpzstate, zznstate, zzpstate, nnzstate, pnzstate, npzstate, ppzstate, nznstate, pznstate, nzpstate, pzpstate, zppstate, zpnstate, znpstate, znnstate) or 0
+							local vOffset = textureVLength * textureIndex
+							addRect(verts, lenVerts, "pxz", tbx * bw, (tby + 1) * bh, tbz * bd, bw, bd, u1, v1 + vOffset, u2, v2 + vOffset, tbdmg)
+							lenVerts = lenVerts + 6
+						end
+					end
+				end
+			end
+		end
+	else
+		for x = 0, cw - 1 do
+			for y = 0, ch - 1 do
+				for z = 0, cd - 1 do
+					local tb, tbstate, tbdmg = chunkManager.getBlock(self, x, y, z)
+					local tbx, tby, tbz = selfX * cw + x, selfY * ch + y, selfZ * cd + z
+					
 					local block = terrainByIndex[tb]
 					local name = block.name
 					local getTextureAtlasOffset = block.getTextureAtlasOffset
 					local u1, v1, u2, v2 = u1s[name], v1s[name], u2s[name], v2s[name]
 					
-					local nzz, nzzstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y, z)
-					local pzz, pzzstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y, z)
-					local znz, znzstate = getBlockFromSelfOrNeighbours(chunks, self, x, y - 1, z)
-					local zpz, zpzstate = getBlockFromSelfOrNeighbours(chunks, self, x, y + 1, z)
-					local zzn, zznstate = getBlockFromSelfOrNeighbours(chunks, self, x, y, z - 1)
-					local zzp, zzpstate = getBlockFromSelfOrNeighbours(chunks, self, x, y, z + 1)
-					local nnz, nnzstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y - 1, z)
-					local pnz, pnzstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y - 1, z)
-					local npz, npzstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y + 1, z)
-					local ppz, ppzstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y + 1, z)
-					local nzn, nznstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y, z - 1)
-					local pzn, pznstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y, z - 1)
-					local nzp, nzpstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y, z + 1)
-					local pzp, pzpstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y, z + 1)
-					local zpp, zppstate = getBlockFromSelfOrNeighbours(chunks, self, x, y + 1, z + 1)
-					local zpn, zpnstate = getBlockFromSelfOrNeighbours(chunks, self, x, y + 1, z - 1)
-					local znp, znpstate = getBlockFromSelfOrNeighbours(chunks, self, x, y - 1, z + 1)
-					local znn, znnstate = getBlockFromSelfOrNeighbours(chunks, self, x, y - 1, z - 1)
+					local zzz = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x, y, z)) and 1 or 0
+					local nzz = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x - 1, y, z)) and 0.75 or 0
+					local pzz = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x + 1, y, z)) and 0.75 or 0
+					local znz = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x, y - 1, z)) and 0.75 or 0
+					local zpz = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x, y + 1, z)) and 0.75 or 0
+					local zzn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x, y, z - 1)) and 0.75 or 0
+					local zzp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x, y, z + 1)) and 0.75 or 0
+					local nnz = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x - 1, y - 1, z)) and 0.5 or 0
+					local pnz = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x + 1, y - 1, z)) and 0.5 or 0
+					local npz = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x - 1, y + 1, z)) and 0.5 or 0
+					local ppz = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x + 1, y + 1, z)) and 0.5 or 0
+					local nzn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x - 1, y, z - 1)) and 0.5 or 0
+					local pzn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x + 1, y, z - 1)) and 0.5 or 0
+					local nzp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x - 1, y, z + 1)) and 0.5 or 0
+					local pzp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x + 1, y, z + 1)) and 0.5 or 0
+					local zpp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x, y + 1, z + 1)) and 0.5 or 0
+					local zpn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x, y + 1, z - 1)) and 0.5 or 0
+					local znp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x, y - 1, z + 1)) and 0.5 or 0
+					local znn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x, y - 1, z - 1)) and 0.5 or 0
+					local nnn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x - 1, y - 1, z - 1)) and 0.25 or 0
+					local nnp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x - 1, y - 1, z + 1)) and 0.25 or 0
+					local npn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x - 1, y + 1, z - 1)) and 0.25 or 0
+					local npp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x - 1, y + 1, z + 1)) and 0.25 or 0
+					local pnn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x + 1, y - 1, z - 1)) and 0.25 or 0
+					local pnp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x + 1, y - 1, z + 1)) and 0.25 or 0
+					local ppn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x + 1, y + 1, z - 1)) and 0.25 or 0
+					local ppp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x + 1, y + 1, z + 1)) and 0.25 or 0
 					
-					if canDraw(tb, nzz) then
-						local textureIndex = getTextureAtlasOffset and getTextureAtlasOffset("nx", tbstate, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn, nzzstate, pzzstate, znzstate, zpzstate, zznstate, zzpstate, nnzstate, pnzstate, npzstate, ppzstate, nznstate, pznstate, nzpstate, pzpstate, zppstate, zpnstate, znpstate, znnstate) or 0
-						local vOffset = textureVLength * textureIndex
-						addRect(verts, lenVerts, "nyz", tbx * bw, tby * bh, tbz * bd, bh, bd, u1, v1 + vOffset, u2, v2 + vOffset, tbdmg)
-						lenVerts = lenVerts + 6
-					end
-					if canDraw(tb, pzz) then
-						local textureIndex = getTextureAtlasOffset and getTextureAtlasOffset("px", tbstate, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn, nzzstate, pzzstate, znzstate, zpzstate, zznstate, zzpstate, nnzstate, pnzstate, npzstate, ppzstate, nznstate, pznstate, nzpstate, pzpstate, zppstate, zpnstate, znpstate, znnstate) or 0
-						local vOffset = textureVLength * textureIndex
-						addRect(verts, lenVerts, "pyz", (tbx + 1) * bw, tby * bh, tbz * bd, bh, bd, u1, v1 + vOffset, u2, v2 + vOffset, tbdmg)
-						lenVerts = lenVerts + 6
-					end
-					if canDraw(tb, zzn) then
-						local textureIndex = getTextureAtlasOffset and getTextureAtlasOffset("nz", tbstate, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn, nzzstate, pzzstate, znzstate, zpzstate, zznstate, zzpstate, nnzstate, pnzstate, npzstate, ppzstate, nznstate, pznstate, nzpstate, pzpstate, zppstate, zpnstate, znpstate, znnstate) or 0
-						local vOffset = textureVLength * textureIndex
-						addRect(verts, lenVerts, "nxy", tbx * bw, tby * bh, tbz * bd, bw, bh, u1, v1 + vOffset, u2, v2 + vOffset, tbdmg)
-						lenVerts = lenVerts + 6
-					end
-					if canDraw(tb, zzp) then
-						local textureIndex = getTextureAtlasOffset and getTextureAtlasOffset("pz", tbstate, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn, nzzstate, pzzstate, znzstate, zpzstate, zznstate, zzpstate, nnzstate, pnzstate, npzstate, ppzstate, nznstate, pznstate, nzpstate, pzpstate, zppstate, zpnstate, znpstate, znnstate) or 0
-						local vOffset = textureVLength * textureIndex
-						addRect(verts, lenVerts, "pxy", tbx * bw, tby * bh, (tbz + 1) * bd, bw, bh, u1, v1 + vOffset, u2, v2 + vOffset, tbdmg)
-						lenVerts = lenVerts + 6
-					end
-					if canDraw(tb, znz) then
-						local textureIndex = getTextureAtlasOffset and getTextureAtlasOffset("ny", tbstate, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn, nzzstate, pzzstate, znzstate, zpzstate, zznstate, zzpstate, nnzstate, pnzstate, npzstate, ppzstate, nznstate, pznstate, nzpstate, pzpstate, zppstate, zpnstate, znpstate, znnstate) or 0
-						local vOffset = textureVLength * textureIndex
-						addRect(verts, lenVerts, "nxz", tbx * bw, tby * bh, tbz * bd, bw, bd, u1, v1 + vOffset, u2, v2 + vOffset, tbdmg)
-						lenVerts = lenVerts + 6
-					end
-					if canDraw(tb, zpz) then
-						local textureIndex = getTextureAtlasOffset and getTextureAtlasOffset("py", tbstate, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn, nzzstate, pzzstate, znzstate, zpzstate, zznstate, zzpstate, nnzstate, pnzstate, npzstate, ppzstate, nznstate, pznstate, nzpstate, pzpstate, zppstate, zpnstate, znpstate, znnstate) or 0
-						local vOffset = textureVLength * textureIndex
-						addRect(verts, lenVerts, "pxz", tbx * bw, (tby + 1) * bh, tbz * bd, bw, bd, u1, v1 + vOffset, u2, v2 + vOffset, tbdmg)
-						lenVerts = lenVerts + 6
+					--           xxx+xxz+xzx+xzz+zxx+xzx+zzx+zzz
+					local vnnn = nnn+nnz+nzn+nzz+znn+znz+zzn+zzz > 0 and 0x1  or 0
+					local vpnn = pnn+pnz+pzn+pzz+znn+pzn+zzn+zzz > 0 and 0x2  or 0
+					local vpnp = pnp+pnz+pzp+pzz+znp+pzp+zzp+zzz > 0 and 0x4  or 0
+					local vnnp = nnp+nnz+nzp+nzz+znp+nzp+zzp+zzz > 0 and 0x8  or 0
+					local vnpn = npn+npz+nzn+nzz+zpn+nzn+zzn+zzz > 0 and 0x10 or 0
+					local vppn = ppn+ppz+pzn+pzz+zpn+pzn+zzn+zzz > 0 and 0x20 or 0
+					local vppp = ppp+ppz+pzp+pzz+zpp+pzp+zzp+zzz > 0 and 0x40 or 0
+					local vnpp = npp+npz+nzp+nzz+zpp+nzp+zzp+zzz > 0 and 0x80 or 0
+					
+					local triangles = constants.triTable[vnnn+vnnp+vnpn+vnpp+vpnn+vpnp+vppn+vppp+1]
+					local x1, y1, z1 = bw * tbx, bh * tby, bd * tbz
+					local x2, y2, z2 = x1 + bw / 2, y1 + bh / 2, z1 + bd / 2
+					local x3, y3, z3 = x1 + bw, y1 + bh, z1 + bd
+					for _, edge in ipairs(triangles) do
+						lenVerts = lenVerts + 1
+						if edge == 0 then      verts[lenVerts] = {x2, y1, z1}
+						elseif edge == 1 then  verts[lenVerts] = {x3, y1, z2}
+						elseif edge == 2 then  verts[lenVerts] = {x2, y1, z3}
+						elseif edge == 3 then  verts[lenVerts] = {x1, y1, z2}
+						elseif edge == 4 then  verts[lenVerts] = {x2, y3, z1}
+						elseif edge == 5 then  verts[lenVerts] = {x3, y3, z2}
+						elseif edge == 6 then  verts[lenVerts] = {x2, y3, z3}
+						elseif edge == 7 then  verts[lenVerts] = {x1, y3, z2}
+						elseif edge == 8 then  verts[lenVerts] = {x1, y2, z1}
+						elseif edge == 9 then  verts[lenVerts] = {x3, y2, z1}
+						elseif edge == 10 then verts[lenVerts] = {x1, y2, z3}
+						elseif edge == 11 then verts[lenVerts] = {x3, y2, z1}
+						end
 					end
 				end
 			end

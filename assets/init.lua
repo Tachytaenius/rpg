@@ -117,7 +117,7 @@ function loadObj(path, untextured)
 	local groups = {} -- Unhandled behaviour for going back to a group already defined
 	local currentGroup
 	local geometry = {}
-	local uv = not untextured and {}
+	local uv = {}
 	local normal = {}
 	local outVerts = {}
 	
@@ -135,6 +135,7 @@ function loadObj(path, untextured)
 					local vt1, vt2
 					if untextured then
 						vt1, vt2 = math.random(), 0
+						iterator()
 					else
 						local vt = uv[tonumber(iterator())]
 						vt1, vt2 = vt[1], vt[2]
