@@ -77,7 +77,7 @@ function love.load(args)
 		local seed2 = args[3] or 0
 		assert(math.floor(seed1) == seed1 and seed1 >= 0 and seed1 < max32, "First seed is not a 32-bit integer")
 		assert(math.floor(seed2) == seed2 and seed2 >= 0 and seed2 < max32, "Second seed is not a 32-bit integer")
-		local seed = seed2 * uint64(max32) + seed1
+		local seed = uint64(seed2) * uint64(max32) + uint64(seed1)
 		world = {
 			seed1 = seed1, -- normal lua number
 			seed2 = seed2, -- "
