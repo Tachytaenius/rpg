@@ -157,15 +157,36 @@ function addRect(verts, lenVerts, side, x, y, z, a, b, u1, v1, u2, v2, damage)
 	verts[lenVerts + 4], verts[lenVerts + 5], verts[lenVerts + 6] = Vv, vV, VV
 end
 
+local scene = require("systems.scene")
 local emptyBlocks = string.char(0):rep(cw*ch*cd)
+function chunkManager.doUpdates(world, list)
+	if not list then
+		list = {}
+		for _, chunk in pairs(world.chunksById) do
+			list[chunk] = true
+		end
+	end
+	
+	for chunk in pairs(list) do
+		if chunk.terrain == emptyBlocks then
+			chunkManager.remove(world, chunk)
+			if scene.chunksToDraw:has(chunk) then
+				scene.chunksToDraw:remove(chunk)
+			end
+			list[chunk] = nil
+		end
+	end
+	for chunk in pairs(list) do
+		chunkManager.update(chunk, world)
+	end
+end
+
 function chunkManager.update(self, world)
 	local chunks = world.chunks
-	if self.terrain == emptyBlocks then chunkManager.remove(world, self) return true end
-	
 	local selfX, selfY, selfZ = self.x, self.y, self.z
-	
 	local verts, lenVerts = {}, 0
 	
+	local unsmoothed = true
 	if unsmoothed then
 		for x = 0, cw - 1 do
 			for y = 0, ch - 1 do
@@ -239,77 +260,82 @@ function chunkManager.update(self, world)
 			end
 		end
 	else
+		local function doPos(x, y, z)
+			local vnnn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x-1, y-1, z-1)) and 0x1  or 0
+			local vpnn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x,   y-1, z-1)) and 0x2  or 0
+			local vpnp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x,   y-1, z  )) and 0x4  or 0
+			local vnnp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x-1, y-1, z  )) and 0x8  or 0
+			local vnpn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x-1, y,   z-1)) and 0x10 or 0
+			local vppn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x,   y,   z-1)) and 0x20 or 0
+			local vppp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x,   y,   z  )) and 0x40 or 0
+			local vnpp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x-1, y,   z  )) and 0x80 or 0
+			
+			local triangles = constants.triTable[vnnn+vnnp+vnpn+vnpp+vpnn+vpnp+vppn+vppp+1]
+			local x1, y1, z1 = bw * (x + cw * selfX - 0.5), bh * (y + ch * selfY - 0.5), bd * (z + cd * selfZ - 0.5)
+			local x2, y2, z2 = x1 + bw / 2, y1 + bh / 2, z1 + bd / 2
+			local x3, y3, z3 = x1 + bw, y1 + bh, z1 + bd
+			for _, edge in ipairs(triangles) do
+				lenVerts = lenVerts + 1
+				if edge == 0 then      verts[lenVerts] = {x2, y1, z1}
+				elseif edge == 1 then  verts[lenVerts] = {x3, y1, z2}
+				elseif edge == 2 then  verts[lenVerts] = {x2, y1, z3}
+				elseif edge == 3 then  verts[lenVerts] = {x1, y1, z2}
+				elseif edge == 4 then  verts[lenVerts] = {x2, y3, z1}
+				elseif edge == 5 then  verts[lenVerts] = {x3, y3, z2}
+				elseif edge == 6 then  verts[lenVerts] = {x2, y3, z3}
+				elseif edge == 7 then  verts[lenVerts] = {x1, y3, z2}
+				elseif edge == 8 then  verts[lenVerts] = {x1, y2, z1}
+				elseif edge == 9 then  verts[lenVerts] = {x3, y2, z1}
+				elseif edge == 10 then verts[lenVerts] = {x3, y2, z3}
+				elseif edge == 11 then verts[lenVerts] = {x1, y2, z3}
+				end
+			end
+		end
 		for x = 0, cw - 1 do
 			for y = 0, ch - 1 do
 				for z = 0, cd - 1 do
-					local tb, tbstate, tbdmg = chunkManager.getBlock(self, x, y, z)
-					local tbx, tby, tbz = selfX * cw + x, selfY * ch + y, selfZ * cd + z
-					
-					local block = terrainByIndex[tb]
-					local name = block.name
-					local getTextureAtlasOffset = block.getTextureAtlasOffset
-					local u1, v1, u2, v2 = u1s[name], v1s[name], u2s[name], v2s[name]
-					
-					local zzz = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x, y, z)) and 1 or 0
-					local nzz = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x - 1, y, z)) and 0.75 or 0
-					local pzz = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x + 1, y, z)) and 0.75 or 0
-					local znz = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x, y - 1, z)) and 0.75 or 0
-					local zpz = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x, y + 1, z)) and 0.75 or 0
-					local zzn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x, y, z - 1)) and 0.75 or 0
-					local zzp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x, y, z + 1)) and 0.75 or 0
-					local nnz = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x - 1, y - 1, z)) and 0.5 or 0
-					local pnz = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x + 1, y - 1, z)) and 0.5 or 0
-					local npz = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x - 1, y + 1, z)) and 0.5 or 0
-					local ppz = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x + 1, y + 1, z)) and 0.5 or 0
-					local nzn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x - 1, y, z - 1)) and 0.5 or 0
-					local pzn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x + 1, y, z - 1)) and 0.5 or 0
-					local nzp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x - 1, y, z + 1)) and 0.5 or 0
-					local pzp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x + 1, y, z + 1)) and 0.5 or 0
-					local zpp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x, y + 1, z + 1)) and 0.5 or 0
-					local zpn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x, y + 1, z - 1)) and 0.5 or 0
-					local znp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x, y - 1, z + 1)) and 0.5 or 0
-					local znn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x, y - 1, z - 1)) and 0.5 or 0
-					local nnn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x - 1, y - 1, z - 1)) and 0.25 or 0
-					local nnp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x - 1, y - 1, z + 1)) and 0.25 or 0
-					local npn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x - 1, y + 1, z - 1)) and 0.25 or 0
-					local npp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x - 1, y + 1, z + 1)) and 0.25 or 0
-					local pnn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x + 1, y - 1, z - 1)) and 0.25 or 0
-					local pnp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x + 1, y - 1, z + 1)) and 0.25 or 0
-					local ppn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x + 1, y + 1, z - 1)) and 0.25 or 0
-					local ppp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x + 1, y + 1, z + 1)) and 0.25 or 0
-					
-					--           xxx+xxz+xzx+xzz+zxx+xzx+zzx+zzz
-					local vnnn = nnn+nnz+nzn+nzz+znn+znz+zzn+zzz > 0 and 0x1  or 0
-					local vpnn = pnn+pnz+pzn+pzz+znn+pzn+zzn+zzz > 0 and 0x2  or 0
-					local vpnp = pnp+pnz+pzp+pzz+znp+pzp+zzp+zzz > 0 and 0x4  or 0
-					local vnnp = nnp+nnz+nzp+nzz+znp+nzp+zzp+zzz > 0 and 0x8  or 0
-					local vnpn = npn+npz+nzn+nzz+zpn+nzn+zzn+zzz > 0 and 0x10 or 0
-					local vppn = ppn+ppz+pzn+pzz+zpn+pzn+zzn+zzz > 0 and 0x20 or 0
-					local vppp = ppp+ppz+pzp+pzz+zpp+pzp+zzp+zzz > 0 and 0x40 or 0
-					local vnpp = npp+npz+nzp+nzz+zpp+nzp+zzp+zzz > 0 and 0x80 or 0
-					
-					local triangles = constants.triTable[vnnn+vnnp+vnpn+vnpp+vpnn+vpnp+vppn+vppp+1]
-					local x1, y1, z1 = bw * tbx, bh * tby, bd * tbz
-					local x2, y2, z2 = x1 + bw / 2, y1 + bh / 2, z1 + bd / 2
-					local x3, y3, z3 = x1 + bw, y1 + bh, z1 + bd
-					for _, edge in ipairs(triangles) do
-						lenVerts = lenVerts + 1
-						if edge == 0 then      verts[lenVerts] = {x2, y1, z1}
-						elseif edge == 1 then  verts[lenVerts] = {x3, y1, z2}
-						elseif edge == 2 then  verts[lenVerts] = {x2, y1, z3}
-						elseif edge == 3 then  verts[lenVerts] = {x1, y1, z2}
-						elseif edge == 4 then  verts[lenVerts] = {x2, y3, z1}
-						elseif edge == 5 then  verts[lenVerts] = {x3, y3, z2}
-						elseif edge == 6 then  verts[lenVerts] = {x2, y3, z3}
-						elseif edge == 7 then  verts[lenVerts] = {x1, y3, z2}
-						elseif edge == 8 then  verts[lenVerts] = {x1, y2, z1}
-						elseif edge == 9 then  verts[lenVerts] = {x3, y2, z1}
-						elseif edge == 10 then verts[lenVerts] = {x1, y2, z3}
-						elseif edge == 11 then verts[lenVerts] = {x3, y2, z1}
-						end
-					end
+					doPos(x, y, z)
 				end
 			end
+		end
+		if not get(get(get(world.chunks, selfX + 1), selfY), selfZ) then
+			for y = 0, ch - 1 do
+				for z = 0, cd - 1 do
+					doPos(cw, y, z)
+				end
+			end
+		end
+		if not get(get(get(world.chunks, selfX), selfY + 1), selfZ) then
+			for x = 0, cw - 1 do
+				for z = 0, cd - 1 do
+					doPos(x, ch, z)
+				end
+			end
+		end
+		if not get(get(get(world.chunks, selfX + 1), selfY + 1), selfZ) then
+			for z = 0, cd - 1 do
+				doPos(cw, ch, z)
+			end
+		end
+		if not get(get(get(world.chunks, selfX), selfY), selfZ + 1) then
+			for x = 0, cw - 1 do
+				for y = 0, ch - 1 do
+					doPos(x, y, cd)
+				end
+			end
+		end
+		if not get(get(get(world.chunks, selfX + 1), selfY), selfZ + 1) then
+			for y = 0, ch - 1 do
+				doPos(cw, y, cd)
+			end
+		end
+		if not get(get(get(world.chunks, selfX), selfY + 1), selfZ + 1) then
+			for x = 0, cd - 1 do
+				doPos(x, ch, cd)
+			end
+		end
+		if not get(get(get(world.chunks, selfX + 1), selfY + 1), selfZ + 1) then
+			doPos(cw, ch, cd)
 		end
 	end
 	
