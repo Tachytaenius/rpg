@@ -106,13 +106,8 @@ function love.load(args)
 			end
 		end
 		
-		-- There's no point iterating the coords way if you're not going to use them.
-		for _, chunk in pairs(world.chunksById) do
-			local removed = chunkManager.update(chunk, world)
-			if not removed then
-				scene.chunksToDraw:add(chunk)
-			end
-		end
+		chunkManager.doUpdates(world)
+		for _,chunk in pairs(world.chunksById)do scene.chunksToDraw:add(chunk)end -- TEMP
 	elseif args[1] == "load" then
 		local path = args[2]
 		world = load(path)
@@ -287,12 +282,7 @@ function love.fixedUpdate(dt)
 	end
 	modifyChunk.doBuildings(world, blockBuildings, blockMetadataBuildings, chunksToUpdate)
 	
-	for chunk, _ in pairs(chunksToUpdate) do
-		local removed = chunkManager.update(chunk, world)
-		if removed then
-			scene.chunksToDraw:remove(chunk)
-		end
-	end
+	chunkManager.doUpdates(world, chunksToUpdate)
 	
 	for i = 1, world.entities.size do
 		move.collide(world.entities:get(i), world.bumpWorld, dt)
