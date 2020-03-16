@@ -5,7 +5,7 @@ local terrainNames = [[
 	stone
 ]]
 local entityNames = [[
-	testman
+	testman epicman
 ]]
 
 local registry = {}

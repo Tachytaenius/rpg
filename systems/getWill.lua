@@ -23,7 +23,7 @@ local function getWill(entity, mdx, mdy)
 	will.targetVelocityXMultiplier, will.targetVelocityZMultiplier = tvx, tvz
 	
 	-- crouch has the same jump height as walk. TODO maybe leap forwards instead?
-	will.targetVelocityYMultiplier = input.didFixedCommand("jump") and math.sqrt(run and 1 or 0.5) or 0
+	will.targetVelocityYMultiplier = input.didFixedCommand("jump") and math.sqrt(run and 1 or 0.5) or crouch and -1 or 0
 	will.targetVelocityThetaMultiplier = mdx
 	will.targetVelocityPhiMultiplier = mdy
 	

@@ -41,7 +41,8 @@ function scene.init()
 	postShader = love.graphics.newShader("shaders/post.glsl")
 	blockCursorShader = love.graphics.newShader("shaders/blockCursor.glsl")
 	
-	gBufferShader:send("damageOverlayVLength", 1 / assets.terrain.constants.numTextures)
+	gBufferShader:send("textureSize", {assets.terrain.constants.textureWidthMetres, assets.terrain.constants.textureHeightMetres, assets.terrain.constants.textureDepthMetres})
+	gBufferShader:send("numTextures", assets.terrain.constants.numTextures)
 	lightingShader:send("nearPlane", constants.lightNearPlane) -- For getting values out of the shadow map depth buffer
 	lightingShader:send("windowSize", {constants.width, constants.height})
 	lightingShader:send("maximumBias", constants.maxShadowBias)
@@ -87,7 +88,7 @@ function renderGBuffer(world)
 	love.graphics.setBlendMode("replace", "premultiplied")
 	love.graphics.setShader(gBufferShader)
 	gBufferShader:send("view", getCameraTransform(scene.camera))
-	gBufferShader:send("viewPosition", {scene.camera.pos:unpack()})
+	-- gBufferShader:send("viewPosition", {scene.camera.pos:unpack()})
 	love.graphics.setCanvas(gBufferSetup)
 	love.graphics.clear()
 	renderObjects(world)
@@ -116,7 +117,6 @@ function renderObjects(world)
 	-- Chunks
 	if currentShader == gBufferShader then
 		gBufferShader:send("modelMatrixInverses", chunkTransform)
-		gBufferShader:send("damageOverlays", true)
 		gBufferShader:send("surfaceMap", assets.terrain.surfaceMap.value)
 		gBufferShader:send("diffuseMap", assets.terrain.diffuseMap.value)
 		gBufferShader:send("materialMap", assets.terrain.materialMap.value)
@@ -126,10 +126,6 @@ function renderObjects(world)
 		if mesh then
 			love.graphics.draw(mesh, cx, cy)
 		end
-	end
-	
-	if currentShader == gBufferShader then
-		gBufferShader:send("damageOverlays", false)
 	end
 	
 	-- Entities

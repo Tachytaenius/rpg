@@ -2,9 +2,7 @@ const int maxGroups = 4;
 
 varying vec3 fragmentNormal;
 varying vec3 fragmentPosition;
-// flat in int damage;
-varying float damage;
-uniform bool damageOverlays;
+varying float textureIndex;
 
 #ifdef VERTEX
 	uniform mat4 view;
@@ -12,15 +10,15 @@ uniform bool damageOverlays;
 	uniform mat4[maxGroups] modelMatrixInverses;
 	
 	attribute vec4 VertexNormal;
-	// attribute int vertexDamage;
-	attribute float vertexDamage;
+	// attribute int vertexTextureIndex;
+	attribute float vertexTextureIndex;
 	
 	attribute float vertexGroup;
 	
 	vec4 position(mat4 transformProjection, vec4 vertexPosition) {
 		fragmentNormal = -vec3(modelMatrixInverses[int(vertexGroup)] * VertexNormal); // TODO: I don't know why these are negated. It's not important for now.
 		fragmentPosition = vec3(modelMatrices[int(vertexGroup)] * vertexPosition);
-		damage = vertexDamage;
+		textureIndex = vertexTextureIndex;
 		
 		return view * modelMatrices[int(vertexGroup)] * vertexPosition;
 	}
@@ -48,35 +46,25 @@ uniform bool damageOverlays;
 		return normalize(tbn * mapNormal);
 	}
 	
+	uniform vec3 textureSize;
 	uniform vec3 viewPosition;
-	
-	uniform Image diffuseMap;
-	uniform Image materialMap;
-	uniform Image surfaceMap;
-	
-	uniform float damageOverlayVLength; // UV height of a texture (for damageOverlays == true only)
+	uniform float numTextures;
+	uniform sampler3D diffuseMap;
+	uniform sampler3D materialMap;
+	uniform sampler3D surfaceMap;
 	
 	void effect() {
-		vec2 textureCoords = VaryingTexCoord.st;
+		vec3 textureCoords = mod(fragmentPosition-0.0001, textureSize) / textureSize;
+		textureCoords.y += textureIndex;
+		textureCoords.y /= numTextures;
 		vec4 surfaceTexel = Texel(surfaceMap, textureCoords);
 		vec3 mapNormal = surfaceTexel.rgb;
 		float ambientIllumination = surfaceTexel.a;
 		vec4 diffuseTexel = Texel(diffuseMap, textureCoords);
 		vec4 materialTexel = Texel(materialMap, textureCoords);
 		
-		if (damageOverlays) {
-			vec2 damageCoords = vec2(textureCoords.s, mod(textureCoords.t, damageOverlayVLength) + damageOverlayVLength * damage);
-			vec4 damageDiffuse = Texel(diffuseMap, damageCoords);
-			vec4 damageSurface = Texel(surfaceMap, damageCoords);
-			vec4 damageMaterial = Texel(materialMap, damageCoords); // Just *stored* in the material map.
-			float damageNormalAlpha = damageMaterial.r;
-			float damageAmbientIlluminationAlpha = damageMaterial.g;
-			diffuseTexel.rgb = mix(diffuseTexel.rgb, damageDiffuse.rgb, damageDiffuse.a);
-			mapNormal = mix(mapNormal, damageSurface.rgb, damageNormalAlpha);
-			ambientIllumination = mix(ambientIllumination, damageSurface.a, damageAmbientIlluminationAlpha);
-		}
-		
-		vec3 outNormal = perturbNormal(fragmentNormal, mapNormal * 2 - 1, textureCoords, normalize(viewPosition - fragmentPosition));
+		// vec3 outNormal = perturbNormal(fragmentNormal, mapNormal * 2 - 1, textureCoords, normalize(viewPosition - fragmentPosition));
+		vec3 outNormal = fragmentNormal;
 		
 		love_Canvases[0] = vec4(fragmentPosition, 1);
 		love_Canvases[1] = vec4(outNormal, ambientIllumination);

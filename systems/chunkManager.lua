@@ -9,10 +9,8 @@ local terrainByIndex = registry.terrainByIndex
 
 local vertexFormat = {
 	{"VertexPosition", "float", 3},
-	{"VertexTexCoord", "float", 2},
 	{"VertexNormal", "float", 3},
-	
-	{"vertexDamage", "float", 1}
+	{"vertexTextureIndex", "float", 1}
 }
 
 local chunkManager = {}
@@ -113,60 +111,22 @@ end
 local textureVLength = 1 / assets.terrain.constants.numTextures
 local u1s, v1s, u2s, v2s = assets.terrain.u1s, assets.terrain.v1s, assets.terrain.u2s, assets.terrain.v2s
 
--- In certain "camera conditions" block sides would show some pixels from their neighbouring textures in the terrain texture atlasses
--- Saves more memory than padding each texture in the the terrain texture atlasses, and is probably a lot faster than using min/max etc. for Texel's arguments...
-local shift = textureVLength * 0.001
-function addRect(verts, lenVerts, side, x, y, z, a, b, u1, v1, u2, v2, damage)
-	v1 = v1 + shift
-	v2 = v2 - shift
-	
-	local vv, vV, Vv, VV
-	if side == "nyz" then
-		vv = {x, y, z, u1, v2, -1, 0, 0, damage}
-		vV = {x, y, z + b, u2, v2, -1, 0, 0, damage}
-		Vv = {x, y + a, z, u1, v1, -1, 0, 0, damage}
-		VV = {x, y + a, z + b, u2, v1, -1, 0, 0, damage}
-	elseif side == "pyz" then
-		vv = {x, y, z, u2, v2, 1, 0, 0, damage}
-		vV = {x, y + a, z, u2, v1, 1, 0, 0, damage}
-		Vv = {x, y, z + b, u1, v2, 1, 0, 0, damage}
-		VV = {x, y + a, z + b, u1, v1, 1, 0, 0, damage}
-	elseif side == "nxz" then
-		vv = {x, y, z, u1, v2, 0, -1, 0, damage}
-		vV = {x + a, y, z, u2, v2, 0, -1, 0, damage}
-		Vv = {x, y, z + b, u1, v1, 0, -1, 0, damage}
-		VV = {x + a, y, z + b, u2, v1, 0, -1, 0, damage}
-	elseif side == "pxz" then
-		vv = {x, y, z, u1, v1, 0, 1, 0, damage}
-		vV = {x, y, z + b, u1, v2, 0, 1, 0, damage}
-		Vv = {x + a, y, z, u2, v1, 0, 1, 0, damage}
-		VV = {x + a, y, z + b, u2, v2, 0, 1, 0, damage}
-	elseif side == "nxy" then
-		vv = {x, y, z, u2, v2, 0, 0, -1, damage}
-		vV = {x, y + b, z, u2, v1, 0, 0, -1, damage}
-		Vv = {x + a, y, z, u1, v2, 0, 0, -1, damage}
-		VV = {x + a, y + b, z, u1, v1, 0, 0, -1, damage}
-	elseif side == "pxy" then
-		vv = {x, y, z, u1, v2, 0, 0, 1, damage}
-		vV = {x + a, y, z, u2, v2, 0, 0, 1, damage}
-		Vv = {x, y + b, z, u1, v1, 0, 0, 1, damage}
-		VV = {x + a, y + b, z, u2, v1, 0, 0, 1, damage}
-	end
-	
-	verts[lenVerts + 1], verts[lenVerts + 2], verts[lenVerts + 3] = vv, vV, Vv
-	verts[lenVerts + 4], verts[lenVerts + 5], verts[lenVerts + 6] = Vv, vV, VV
-end
-
+local sqrt = math.sqrt
 local scene = require("systems.scene")
 local emptyBlocks = string.char(0):rep(cw*ch*cd)
 function chunkManager.doUpdates(world, list)
+	-- TEMP
 	if not list then
 		list = {}
 		for _, chunk in pairs(world.chunksById) do
 			list[chunk] = true
 		end
 	end
+	-- /TEMP
 	
+	local chunks = world.chunks
+	
+	local listX, listY, listZ, listX2, listY2, listZ2 = math.huge, math.huge, math.huge, -math.huge, -math.huge, -math.huge
 	for chunk in pairs(list) do
 		if chunk.terrain == emptyBlocks then
 			chunkManager.remove(world, chunk)
@@ -174,121 +134,164 @@ function chunkManager.doUpdates(world, list)
 				scene.chunksToDraw:remove(chunk)
 			end
 			list[chunk] = nil
+		else
+			listX, listY, listZ = math.min(chunk.x, listX), math.min(chunk.y, listY), math.min(chunk.z, listZ)
+			listX2, listY2, listZ2 = math.max(chunk.x, listX2), math.max(chunk.y, listY2), math.max(chunk.z, listZ2)
 		end
 	end
-	for chunk in pairs(list) do
-		chunkManager.update(chunk, world)
-	end
-end
-
-function chunkManager.update(self, world)
-	local chunks = world.chunks
-	local selfX, selfY, selfZ = self.x, self.y, self.z
-	local verts, lenVerts = {}, 0
+	listX2, listY2, listZ2 = listX2 + 1, listY2 + 1, listZ2 + 1
 	
-	local unsmoothed = true
-	if unsmoothed then
-		for x = 0, cw - 1 do
-			for y = 0, ch - 1 do
-				for z = 0, cd - 1 do
-					-- tb means "this block"
-					local tb, tbstate, tbdmg = chunkManager.getBlock(self, x, y, z)
-					local tbx, tby, tbz = selfX * cw + x, selfY * ch + y, selfZ * cd + z
-					if canDraw(tb) then
-						local block = terrainByIndex[tb]
-						local name = block.name
-						local getTextureAtlasOffset = block.getTextureAtlasOffset
-						local u1, v1, u2, v2 = u1s[name], v1s[name], u2s[name], v2s[name]
-						
-						local nzz, nzzstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y, z)
-						local pzz, pzzstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y, z)
-						local znz, znzstate = getBlockFromSelfOrNeighbours(chunks, self, x, y - 1, z)
-						local zpz, zpzstate = getBlockFromSelfOrNeighbours(chunks, self, x, y + 1, z)
-						local zzn, zznstate = getBlockFromSelfOrNeighbours(chunks, self, x, y, z - 1)
-						local zzp, zzpstate = getBlockFromSelfOrNeighbours(chunks, self, x, y, z + 1)
-						local nnz, nnzstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y - 1, z)
-						local pnz, pnzstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y - 1, z)
-						local npz, npzstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y + 1, z)
-						local ppz, ppzstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y + 1, z)
-						local nzn, nznstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y, z - 1)
-						local pzn, pznstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y, z - 1)
-						local nzp, nzpstate = getBlockFromSelfOrNeighbours(chunks, self, x - 1, y, z + 1)
-						local pzp, pzpstate = getBlockFromSelfOrNeighbours(chunks, self, x + 1, y, z + 1)
-						local zpp, zppstate = getBlockFromSelfOrNeighbours(chunks, self, x, y + 1, z + 1)
-						local zpn, zpnstate = getBlockFromSelfOrNeighbours(chunks, self, x, y + 1, z - 1)
-						local znp, znpstate = getBlockFromSelfOrNeighbours(chunks, self, x, y - 1, z + 1)
-						local znn, znnstate = getBlockFromSelfOrNeighbours(chunks, self, x, y - 1, z - 1)
-						
-						if canDraw(tb, nzz) then
-							local textureIndex = getTextureAtlasOffset and getTextureAtlasOffset("nx", tbstate, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn, nzzstate, pzzstate, znzstate, zpzstate, zznstate, zzpstate, nnzstate, pnzstate, npzstate, ppzstate, nznstate, pznstate, nzpstate, pzpstate, zppstate, zpnstate, znpstate, znnstate) or 0
-							local vOffset = textureVLength * textureIndex
-							addRect(verts, lenVerts, "nyz", tbx * bw, tby * bh, tbz * bd, bh, bd, u1, v1 + vOffset, u2, v2 + vOffset, tbdmg)
-							lenVerts = lenVerts + 6
-						end
-						if canDraw(tb, pzz) then
-							local textureIndex = getTextureAtlasOffset and getTextureAtlasOffset("px", tbstate, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn, nzzstate, pzzstate, znzstate, zpzstate, zznstate, zzpstate, nnzstate, pnzstate, npzstate, ppzstate, nznstate, pznstate, nzpstate, pzpstate, zppstate, zpnstate, znpstate, znnstate) or 0
-							local vOffset = textureVLength * textureIndex
-							addRect(verts, lenVerts, "pyz", (tbx + 1) * bw, tby * bh, tbz * bd, bh, bd, u1, v1 + vOffset, u2, v2 + vOffset, tbdmg)
-							lenVerts = lenVerts + 6
-						end
-						if canDraw(tb, zzn) then
-							local textureIndex = getTextureAtlasOffset and getTextureAtlasOffset("nz", tbstate, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn, nzzstate, pzzstate, znzstate, zpzstate, zznstate, zzpstate, nnzstate, pnzstate, npzstate, ppzstate, nznstate, pznstate, nzpstate, pzpstate, zppstate, zpnstate, znpstate, znnstate) or 0
-							local vOffset = textureVLength * textureIndex
-							addRect(verts, lenVerts, "nxy", tbx * bw, tby * bh, tbz * bd, bw, bh, u1, v1 + vOffset, u2, v2 + vOffset, tbdmg)
-							lenVerts = lenVerts + 6
-						end
-						if canDraw(tb, zzp) then
-							local textureIndex = getTextureAtlasOffset and getTextureAtlasOffset("pz", tbstate, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn, nzzstate, pzzstate, znzstate, zpzstate, zznstate, zzpstate, nnzstate, pnzstate, npzstate, ppzstate, nznstate, pznstate, nzpstate, pzpstate, zppstate, zpnstate, znpstate, znnstate) or 0
-							local vOffset = textureVLength * textureIndex
-							addRect(verts, lenVerts, "pxy", tbx * bw, tby * bh, (tbz + 1) * bd, bw, bh, u1, v1 + vOffset, u2, v2 + vOffset, tbdmg)
-							lenVerts = lenVerts + 6
-						end
-						if canDraw(tb, znz) then
-							local textureIndex = getTextureAtlasOffset and getTextureAtlasOffset("ny", tbstate, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn, nzzstate, pzzstate, znzstate, zpzstate, zznstate, zzpstate, nnzstate, pnzstate, npzstate, ppzstate, nznstate, pznstate, nzpstate, pzpstate, zppstate, zpnstate, znpstate, znnstate) or 0
-							local vOffset = textureVLength * textureIndex
-							addRect(verts, lenVerts, "nxz", tbx * bw, tby * bh, tbz * bd, bw, bd, u1, v1 + vOffset, u2, v2 + vOffset, tbdmg)
-							lenVerts = lenVerts + 6
-						end
-						if canDraw(tb, zpz) then
-							local textureIndex = getTextureAtlasOffset and getTextureAtlasOffset("py", tbstate, nzz, pzz, znz, zpz, zzn, zzp, nnz, pnz, npz, ppz, nzn, pzn, nzp, pzp, zpp, zpn, znp, znn, nzzstate, pzzstate, znzstate, zpzstate, zznstate, zzpstate, nnzstate, pnzstate, npzstate, ppzstate, nznstate, pznstate, nzpstate, pzpstate, zppstate, zpnstate, znpstate, znnstate) or 0
-							local vOffset = textureVLength * textureIndex
-							addRect(verts, lenVerts, "pxz", tbx * bw, (tby + 1) * bh, tbz * bd, bw, bd, u1, v1 + vOffset, u2, v2 + vOffset, tbdmg)
-							lenVerts = lenVerts + 6
-						end
-					end
-				end
-			end
-		end
-	else
+	local triTable = constants.triTable
+	-- local maxSameEdgesPerCube = triTable.maxSameEdgesPerCube
+	-- local triangleNormals, lenTriangleNormals = {}, 0
+	-- local overallVerts = {}
+	-- local encodeX, encodeY, encodeZ = listX * cw - 1, listY * ch - 1, listZ * cd - 1
+	-- local encodeW, encodeH, encodeD = (listX2 - listX) * cw + 2, (listY2 - listY) * ch + 2, (listZ2 - listZ) * cd + 2
+	-- local chunkVerts = {}
+	for chunk in pairs(list) do
+		local chunkX, chunkY, chunkZ = chunk.x, chunk.y, chunk.z
+		local verts, lenVerts = {}, 0
+		-- chunkVerts[chunk] = verts
+		
 		local function doPos(x, y, z)
-			local vnnn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x-1, y-1, z-1)) and 0x1  or 0
-			local vpnn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x,   y-1, z-1)) and 0x2  or 0
-			local vpnp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x,   y-1, z  )) and 0x4  or 0
-			local vnnp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x-1, y-1, z  )) and 0x8  or 0
-			local vnpn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x-1, y,   z-1)) and 0x10 or 0
-			local vppn = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x,   y,   z-1)) and 0x20 or 0
-			local vppp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x,   y,   z  )) and 0x40 or 0
-			local vnpp = canDraw(getBlockFromSelfOrNeighbours(chunks, self, x-1, y,   z  )) and 0x80 or 0
+			local vnnn = canDraw(getBlockFromSelfOrNeighbours(chunks, chunk, x-1, y-1, z-1)) and 0x1  or 0
+			local vpnn = canDraw(getBlockFromSelfOrNeighbours(chunks, chunk, x,   y-1, z-1)) and 0x2  or 0
+			local vpnp = canDraw(getBlockFromSelfOrNeighbours(chunks, chunk, x,   y-1, z  )) and 0x4  or 0
+			local vnnp = canDraw(getBlockFromSelfOrNeighbours(chunks, chunk, x-1, y-1, z  )) and 0x8  or 0
+			local vnpn = canDraw(getBlockFromSelfOrNeighbours(chunks, chunk, x-1, y,   z-1)) and 0x10 or 0
+			local vppn = canDraw(getBlockFromSelfOrNeighbours(chunks, chunk, x,   y,   z-1)) and 0x20 or 0
+			local vppp = canDraw(getBlockFromSelfOrNeighbours(chunks, chunk, x,   y,   z  )) and 0x40 or 0
+			local vnpp = canDraw(getBlockFromSelfOrNeighbours(chunks, chunk, x-1, y,   z  )) and 0x80 or 0
 			
-			local triangles = constants.triTable[vnnn+vnnp+vnpn+vnpp+vpnn+vpnp+vppn+vppp+1]
-			local x1, y1, z1 = bw * (x + cw * selfX - 0.5), bh * (y + ch * selfY - 0.5), bd * (z + cd * selfZ - 0.5)
+			local triangles = triTable[vnnn+vnnp+vnpn+vnpp+vpnn+vpnp+vppn+vppp]
+			local x1, y1, z1 = bw * (x + cw * chunkX - 0.5), bh * (y + ch * chunkY - 0.5), bd * (z + cd * chunkZ - 0.5)
 			local x2, y2, z2 = x1 + bw / 2, y1 + bh / 2, z1 + bd / 2
 			local x3, y3, z3 = x1 + bw, y1 + bh, z1 + bd
-			for _, edge in ipairs(triangles) do
-				lenVerts = lenVerts + 1
-				if edge == 0 then      verts[lenVerts] = {x2, y1, z1}
-				elseif edge == 1 then  verts[lenVerts] = {x3, y1, z2}
-				elseif edge == 2 then  verts[lenVerts] = {x2, y1, z3}
-				elseif edge == 3 then  verts[lenVerts] = {x1, y1, z2}
-				elseif edge == 4 then  verts[lenVerts] = {x2, y3, z1}
-				elseif edge == 5 then  verts[lenVerts] = {x3, y3, z2}
-				elseif edge == 6 then  verts[lenVerts] = {x2, y3, z3}
-				elseif edge == 7 then  verts[lenVerts] = {x1, y3, z2}
-				elseif edge == 8 then  verts[lenVerts] = {x1, y2, z1}
-				elseif edge == 9 then  verts[lenVerts] = {x3, y2, z1}
-				elseif edge == 10 then verts[lenVerts] = {x3, y2, z3}
-				elseif edge == 11 then verts[lenVerts] = {x1, y2, z3}
+			
+			local function getVertexPosition(edge)
+				if edge == 0 then      return x2, y1, z1
+				elseif edge == 1 then  return x3, y1, z2
+				elseif edge == 2 then  return x2, y1, z3
+				elseif edge == 3 then  return x1, y1, z2
+				elseif edge == 4 then  return x2, y3, z1
+				elseif edge == 5 then  return x3, y3, z2
+				elseif edge == 6 then  return x2, y3, z3
+				elseif edge == 7 then  return x1, y3, z2
+				elseif edge == 8 then  return x1, y2, z1
+				elseif edge == 9 then  return x3, y2, z1
+				elseif edge == 10 then return x3, y2, z3
+				elseif edge == 11 then return x1, y2, z3
 				end
+			end
+			
+			-- local function storeVertex(vertex, edge, i)
+			-- 	local x, y, z = x+chunkX*cw, y+chunkY*ch, z+chunkZ*cd
+			-- 	-- "Destination edges" are 8, 3, and 0
+			-- 	local edgeSharingIndex
+			-- 	if edge == 0 then
+			-- 		edgeSharingIndex = 0
+			-- 	elseif edge == 1 then
+			-- 		edge = 3
+			-- 		x = x + 1
+			-- 		edgeSharingIndex = 1
+			-- 	elseif edge == 2 then
+			-- 		edge = 0
+			-- 		z = z + 1
+			-- 		edgeSharingIndex = 1
+			-- 	elseif edge == 3 then
+			-- 		edgeSharingIndex = 0
+			-- 	elseif edge == 4 then
+			-- 		edge = 0
+			-- 		y = y + 1
+			-- 		edgeSharingIndex = 1
+			-- 	elseif edge == 5 then
+			-- 		edge = 3
+			-- 		x = x + 1
+			-- 		y = y + 1
+			-- 		edgeSharingIndex = 2
+			-- 	elseif edge == 6 then
+			-- 		edge = 0
+			-- 		y = y - 1
+			-- 		z = z - 1
+			-- 		edgeSharingIndex = 2
+			-- 	elseif edge == 7 then
+			-- 		edge = 3
+			-- 		y = y + 1
+			-- 		edgeSharingIndex = 1
+			-- 	elseif edge == 8 then
+			-- 		edgeSharingIndex = 0
+			-- 	elseif edge == 9 then
+			-- 		edge = 8
+			-- 		x = x + 1
+			-- 		edgeSharingIndex = 1
+			-- 	elseif edge == 10 then
+			-- 		edge = 8
+			-- 		x = x + 1
+			-- 		z = z + 1
+			-- 		edgeSharingIndex = 2
+			-- 	elseif edge == 11 then
+			-- 		edge = 8
+			-- 		z = z + 1
+			-- 		edgeSharingIndex = 1
+			-- 	end
+			-- 	-- if edge == 0 then
+			-- 	-- 	edge = 0
+			-- 	--[=[else]=]if edge == 3 then
+			-- 		edge = 1
+			-- 	elseif edge == 8 then
+			-- 		edge = 2
+			-- 	end
+			-- 	local index =
+			-- 		i +
+			-- 		edge * maxSameEdgesPerCube +
+			-- 		edgeSharingIndex * 3 * maxSameEdgesPerCube +
+			-- 		(x - encodeX) * 4 * 3 * maxSameEdgesPerCube +
+			-- 		(y - encodeY) * encodeW * 4 * 3 * maxSameEdgesPerCube +
+			-- 		(z - encodeZ) * encodeH * encodeW * 4 * 3 * maxSameEdgesPerCube
+			-- 	vertex.info = {x, y, z, edge, edgeSharingIndex}
+			-- 	overallVerts[index] = vertex
+			-- end
+			
+			local i = 0
+			while i < #triangles/3 do
+				local v1e = triangles[i*3+1]
+				local v2e = triangles[i*3+2]
+				local v3e = triangles[i*3+3]
+				
+				local v1x, v1y, v1z = getVertexPosition(v1e)
+				local v2x, v2y, v2z = getVertexPosition(v2e)
+				local v3x, v3y, v3z = getVertexPosition(v3e)
+				local e1x, e1y, e1z = v1x-v2x, v1y-v2y, v1z-v2z
+				local e2x, e2y, e2z = v1x-v3x, v1y-v3y, v1z-v3z
+				local normalX, normalY, normalZ = 
+					e1y * e2z - e1z * e2y,
+					e1z * e2x - e1x * e2z,
+					e1x * e2y - e1y * e2x
+				
+				-- Normalise
+				local magnitude = sqrt(normalX^2+normalY^2+normalZ^2)
+				normalX, normalY, normalZ =
+					normalX / magnitude,
+					normalY / magnitude,
+					normalZ / magnitude
+				
+				-- triangleNormals[lenTriangleNormals*3+1], triangleNormals[lenTriangleNormals*3+2], triangleNormals[lenTriangleNormals*3+3] = normalX, normalY, normalZ
+				
+				local v1 = {v1x, v1y, v1z, --[=[normalId = lenTriangleNormals}]=] normalX, normalY, normalZ, }
+				local v2 = {v2x, v2y, v2z, --[=[normalId = lenTriangleNormals}]=] normalX, normalY, normalZ, }
+				local v3 = {v3x, v3y, v3z, --[=[normalId = lenTriangleNormals}]=] normalX, normalY, normalZ, }
+				
+				verts[lenVerts + 1] = v1
+				verts[lenVerts + 2] = v2
+				verts[lenVerts + 3] = v3
+				
+				-- storeVertex(v1, v1e, i)
+				-- storeVertex(v2, v2e, i)
+				-- storeVertex(v3, v3e, i)
+				
+				-- lenTriangleNormals = lenTriangleNormals + 1
+				lenVerts = lenVerts + 3
+				i = i + 1
 			end
 		end
 		for x = 0, cw - 1 do
@@ -298,54 +301,124 @@ function chunkManager.update(self, world)
 				end
 			end
 		end
-		if not get(get(get(world.chunks, selfX + 1), selfY), selfZ) then
+		if not get(get(get(chunks, chunkX + 1), chunkY), chunkZ) then
 			for y = 0, ch - 1 do
 				for z = 0, cd - 1 do
 					doPos(cw, y, z)
 				end
 			end
 		end
-		if not get(get(get(world.chunks, selfX), selfY + 1), selfZ) then
+		if not get(get(get(chunks, chunkX), chunkY + 1), chunkZ) then
 			for x = 0, cw - 1 do
 				for z = 0, cd - 1 do
 					doPos(x, ch, z)
 				end
 			end
 		end
-		if not get(get(get(world.chunks, selfX + 1), selfY + 1), selfZ) then
+		if not get(get(get(chunks, chunkX + 1), chunkY + 1), chunkZ) then
 			for z = 0, cd - 1 do
 				doPos(cw, ch, z)
 			end
 		end
-		if not get(get(get(world.chunks, selfX), selfY), selfZ + 1) then
+		if not get(get(get(chunks, chunkX), chunkY), chunkZ + 1) then
 			for x = 0, cw - 1 do
 				for y = 0, ch - 1 do
 					doPos(x, y, cd)
 				end
 			end
 		end
-		if not get(get(get(world.chunks, selfX + 1), selfY), selfZ + 1) then
+		if not get(get(get(chunks, chunkX + 1), chunkY), chunkZ + 1) then
 			for y = 0, ch - 1 do
 				doPos(cw, y, cd)
 			end
 		end
-		if not get(get(get(world.chunks, selfX), selfY + 1), selfZ + 1) then
+		if not get(get(get(chunks, chunkX), chunkY + 1), chunkZ + 1) then
 			for x = 0, cd - 1 do
 				doPos(x, ch, cd)
 			end
 		end
-		if not get(get(get(world.chunks, selfX + 1), selfY + 1), selfZ + 1) then
+		if not get(get(get(chunks, chunkX + 1), chunkY + 1), chunkZ + 1) then
 			doPos(cw, ch, cd)
 		end
-	end
-	
-	if self.mesh then
-		self.mesh:release()
-	end
-	if lenVerts == 0 then
-		self.mesh = nil
-	else
-		self.mesh = love.graphics.newMesh(vertexFormat, verts, "triangles")
+	-- end
+	-- 
+	-- for x = encodeX+1, encodeX+encodeW-1 do
+	-- 	for y = encodeY+1, encodeY+encodeH-1 do
+	-- 		for z = encodeZ+1, encodeZ+encodeD-1 do
+	-- 			local baseIndex =
+	-- 				-- 0 +
+	-- 				-- edge * maxSameEdgesPerCube +
+	-- 				-- 0 * 3  * maxSameEdgesPerCube +
+	-- 				(x - encodeX) * 4 * 3  * maxSameEdgesPerCube +
+	-- 				(y - encodeY) * encodeW * 4 * 3  * maxSameEdgesPerCube +
+	-- 				(z - encodeZ) * encodeH * encodeW * 4 * 3 * maxSameEdgesPerCube
+	-- 			for edge = 0, 2 do -- 0 = 0, 1 = 3, 2 = 8
+	-- 				local v1 = overallVerts[baseIndex+0*maxSameEdgesPerCube]
+	-- 				local v2 = overallVerts[baseIndex+3*maxSameEdgesPerCube]
+	-- 				local v3 = overallVerts[baseIndex+6*maxSameEdgesPerCube]
+	-- 				local v4 = overallVerts[baseIndex+9*maxSameEdgesPerCube]
+	-- 				local n = 0
+	-- 				local normalX, normalY, normalZ = 0, 0, 0
+	-- 				if v1 then
+	-- 					local triangleNormalId = v1.normalId
+	-- 					normalX = triangleNormals[triangleNormalId*3+1]
+	-- 					normalY = triangleNormals[triangleNormalId*3+2]
+	-- 					normalZ = triangleNormals[triangleNormalId*3+3]
+	-- 					n = 1
+	-- 				end
+	-- 				if v2 then
+	-- 					local triangleNormalId = v2.normalId
+	-- 					normalX = normalX + triangleNormals[triangleNormalId*3+1]
+	-- 					normalY = normalY + triangleNormals[triangleNormalId*3+2]
+	-- 					normalZ = normalZ + triangleNormals[triangleNormalId*3+3]
+	-- 					n = n + 1
+	-- 				end
+	-- 				if v3 then
+	-- 					local triangleNormalId = v3.normalId
+	-- 					normalX = normalX + triangleNormals[triangleNormalId*3+1]
+	-- 					normalY = normalY + triangleNormals[triangleNormalId*3+2]
+	-- 					normalZ = normalZ + triangleNormals[triangleNormalId*3+3]
+	-- 					n = n + 1
+	-- 				end
+	-- 				if v4 then
+	-- 					local triangleNormalId = v4.normalId
+	-- 					normalX = normalX + triangleNormals[triangleNormalId*3+1]
+	-- 					normalY = normalY + triangleNormals[triangleNormalId*3+2]
+	-- 					normalZ = normalZ + triangleNormals[triangleNormalId*3+3]
+	-- 					n = n + 1
+	-- 				end
+	-- 				local normalX, normalY, normalZ =
+	-- 					normalX / n,
+	-- 					normalY / n,
+	-- 					normalZ / n
+	-- 				if v1 then
+	-- 					v1[4], v1[5], v1[6] = normalX, normalY, normalZ
+	-- 				end
+	-- 				if v2 then
+	-- 					v2[4], v2[5], v2[6] = normalX, normalY, normalZ
+	-- 				end
+	-- 				if v3 then
+	-- 					v3[4], v3[5], v3[6] = normalX, normalY, normalZ
+	-- 				end
+	-- 				if v4 then
+	-- 					v4[4], v4[5], v4[6] = normalX, normalY, normalZ
+	-- 				end
+	-- 			end
+	-- 		end
+	-- 	end
+	-- end
+	-- 
+	-- for chunk in pairs(list) do
+	-- 	local verts = chunkVerts[chunk]
+		if chunk.mesh then
+			chunk.mesh:release()
+		end
+		if not verts[1] then
+			-- lenVerts == 0
+			chunk.mesh = nil
+		else
+			chunk.mesh = love.graphics.newMesh(vertexFormat, verts, "triangles")
+		end
 	end
 end
 

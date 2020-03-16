@@ -9,13 +9,13 @@ local constants, registry, settings, assets =
 	require("systems.settings"),
 	require("assets")
 
-local suit, bump, list, detmath, cpml, zimblegz =
+local suit, bump, list, detmath, cpml, noice =
 	require("lib.suit"),
 	require("lib.bump-3dpd"),
 	require("lib.list"),
 	require("lib.detmath"),
 	require("lib.cpml"),
-	require("lib.zimblegz")
+	require("lib.noice")
 
 local think, getWill, move, newChunk, scene, input, ui, takeScreenshot, newEntity, modifyChunk, chunkManager, save, load =
 	require("systems.think"),
@@ -36,7 +36,7 @@ local outlineShader
 local infoCanvas, contentCanvas
 local world
 
- -- For love.draw, written to in love.run
+-- For love.draw and mousemoved, written to in love.run
 local performance
 
 -- For an "onPaused" function to trigger input.clearFixedCommandsList
@@ -84,20 +84,20 @@ function love.load(args)
 			seed = seed, -- unsigned long long int
 			rng = love.math.newRandomGenerator(seed1, seed2),
 			bumpWorld = bump.newWorld(constants.bumpCellSize),
-			simplexer = zimblegz.newSimplexer(seed),
+			simplexer = noice.newNoiser("OpenSimplex", seed),
 			entities = list.new(),
 			chunks = {},
 			chunksById = {},
 			freeChunkIdsToUse = {len = 0},
 			nextIdAfterChunkIdListEnd = 0, -- TODO: max chunk ID from cw, ch, cd and maximum integer
 			lights = list.new():add({isDirectional = true, angle={0.4, 0.8, 0.6}, colour={1, 1, 1}, strength = 3}),
-			gravityAmount = 9.8,
+			gravityAmount = 9.8 and 0,
 			gravityMaxFallSpeed = 50,
 			unsaved = true
 		}
-		local testmanPlayer = newEntity(world, "testman", 4, 9, 4, 1)
+		local testmanPlayer = newEntity(world, "epicman", 4, 9, 4, 1)
 		scene.cameraEntity = testmanPlayer
-		local worldWidth, worldHeight, worldDepth = 16, 4, 16
+		local worldWidth, worldHeight, worldDepth = 16, 8, 16
 		for x = 0, worldWidth - 1 do
 			for y = 0, worldHeight - 1 do
 				for z = 0, worldDepth - 1 do

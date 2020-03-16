@@ -46,7 +46,7 @@ constants.fixedCommands = {
 	run = "whileDown",
 	crouch = "whileDown",
 	
-	destroy = "onPress",
+	destroy = "whileDown",
 	build = "onPress"
 }
 
@@ -60,14 +60,14 @@ end
 constants.infoWidth = 200
 constants.infoHeight = 100
 
-constants.blockWidth = 0.5 -- metres
-constants.blockHeight = 0.5
-constants.blockDepth = 0.5
+constants.blockWidth = 0.25 -- metres
+constants.blockHeight = 0.25
+constants.blockDepth = 0.25
 
 constants.blockCursorPadding = 0.01 -- metres
 
 constants.chunkWidth = 8 -- blocks
-constants.chunkHeight = 8
+constants.chunkHeight = 4
 constants.chunkDepth = 8
 
 constants.velocitySnap = 0.001
@@ -100,7 +100,7 @@ constants.sideBits = {
 
 -- For marching cubes
 constants.surfaceLevel = 0
-constants.triTable = {
+constants.triTable = { [0] =
 	{},
 	{0, 8, 3},
 	{0, 1, 9},
@@ -358,5 +358,14 @@ constants.triTable = {
 	{0, 3, 8},
 	{}
 }
+
+constants.triTable.maxSameEdgesPerCube = 0
+for i, triangles in ipairs(constants.triTable) do
+	local sameEdgesThisCube = {[0] = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	for _, edge in ipairs(triangles) do
+		sameEdgesThisCube[edge] = sameEdgesThisCube[edge] + 1
+	end
+	constants.triTable.maxSameEdgesPerCube = math.max(constants.triTable.maxSameEdgesPerCube, unpack(sameEdgesThisCube))
+end
 
 return constants

@@ -36,18 +36,37 @@ local function blocksOnlyFilter(item)
 	return type(item) == "number"
 end
 
+local function get(t, k)
+	if t then
+		return t[k]
+	end
+end
+
 function modifyChunk.damageBlocks(entity, will, world, blockDamages)
 	if will and will.destroy then
-		segmentCast(entity, world.bumpWorld,
-			function(hash)
-				if blockDamages[hash] then
-					blockDamages[hash] = blockDamages[hash] + 1
-				else
-					blockDamages[hash] = 1 -- damage _being dealt_
+		-- TODO: Raycast, not just from position
+		local ex, ey, ez
+		do
+			local x, y, z, w, h, d = world.bumpWorld:getCube(entity)
+			ex, ey, ez = x + w / 2, y + h / 2, z + d / 2
+		end
+		local ebx, eby, ebz = math.floor(ex / bw), math.floor(ey / bh), math.floor(ez / bd)
+		for x = -5, 5 do
+			local ebx = ebx + x
+			local bx, cx = ebx % cw, math.floor(ebx / cw)
+			for y = -5, 5 do
+				local eby = eby + y
+				local by, cy = eby % ch, math.floor(eby / ch)
+				for z = -5, 5 do
+					local ebz = ebz + z
+					local bz, cz = ebz % cd, math.floor(ebz / cd)
+					local chunk = get(get(get(world.chunks, cx), cy), cz)
+					if chunk then
+						blockDamages[bhEncodeForBump(bx, by, bz, chunk.id)] = 4
+					end
 				end
-			end,
-			blocksOnlyFilter
-		)
+			end
+		end
 	end
 end
 
@@ -62,7 +81,7 @@ function modifyChunk.doDamages(world, blockDamages, chunksToUpdate)
 		if currentMetadata % 4 + damageDealt >= 4 then
 			chunk.metadata = replaceChar(chunk.metadata, index, string.char(0))
 			chunk.terrain = replaceChar(chunk.terrain, index, string.char(0))
-			world.bumpWorld:remove(hash)
+			-- world.bumpWorld:remove(hash)
 		else
 			chunk.metadata = replaceChar(chunk.metadata, index, string.char(currentMetadata + damageDealt))
 		end
@@ -162,12 +181,12 @@ function modifyChunk.doBuildings(world, blockBuildings, blockMetadataBuildings, 
 			chunk.terrain = replaceChar(chunk.terrain, localHash, string.char(block))
 			chunk.metadata = replaceChar(chunk.metadata, localHash, string.char(blockMetadataBuildings[hash]))
 			local cx, cy, cz = chunk.x, chunk.y, chunk.z
-			world.bumpWorld:add(hash,
+			--[=[world.bumpWorld:add(hash,
 				(x + cx * cw) * bw,
 				(y + cy * ch) * bh,
 				(z + cz * cd) * bd,
 				bw, bh, bd
-			)
+			)]=]
 			
 			chunksToUpdate[chunk] = true
 			local chunks = world.chunks

@@ -56,7 +56,7 @@ return function(path)
 					local block = terrainByIndex[string.byte(string.sub(chunk.terrain, hash, hash))]
 					if not block.nonSolid then
 						local hash = bhEncodeForBump(x, y, z, chunkId)
-						bumpWorld:add(hash, blockX, blockY, blockZ, bw, bh, bd)
+						-- bumpWorld:add(hash, blockX, blockY, blockZ, bw, bh, bd)
 					end
 				end
 			end

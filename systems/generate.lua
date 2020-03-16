@@ -9,7 +9,7 @@ local cw, ch, cd = constants.chunkWidth, constants.chunkHeight, constants.chunkD
 local chaoticRandom, updateString
 
 local function terrainHeight(world, blockX, blockZ)
-	 return 8+2*world.simplexer:noise2D(blockX/7, blockZ/8)
+	 return 2.5+2*world.simplexer:noise2D(blockX/7, blockZ/8)
 end
 
 local tmpTerrainTable, tmpMetadataTable = {}, {}
@@ -36,7 +36,7 @@ local function generate(cx, cy, cz, chunkId, world)
 					tmpTerrainTable[hash] = string.char(block.index)
 					
 					local hash = bhEncodeForBump(x, y, z, chunkId)
-					world.bumpWorld:add(hash, blockX, blockY, blockZ, bw, bh, bd)
+					-- world.bumpWorld:add(hash, blockX, blockY, blockZ, bw, bh, bd)
 				else
 					tmpTerrainTable[hash] = string.char(0) -- air
 				end
