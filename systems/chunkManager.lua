@@ -108,6 +108,16 @@ local function getBlockFromSelfOrNeighbours(chunks, chunk, x, y, z)
 	return 0 -- air
 end
 
+function chunkManager.getBlockInWorld(chunks, x, y, z)
+	local cx, cy, cz = math.floor(x / cw), math.floor(y / ch), math.floor(z / cd)
+	local chunk = get(get(get(chunks, cx), cy), cz)
+	if chunk then
+		return chunkManager.getBlock(chunk, x % cw, y % ch, z % cd)
+	else
+		return 0
+	end
+end
+
 local textureVLength = 1 / assets.terrain.constants.numTextures
 local u1s, v1s, u2s, v2s = assets.terrain.u1s, assets.terrain.v1s, assets.terrain.u2s, assets.terrain.v2s
 
@@ -139,157 +149,171 @@ function chunkManager.doUpdates(world, list)
 			listX2, listY2, listZ2 = math.max(chunk.x, listX2), math.max(chunk.y, listY2), math.max(chunk.z, listZ2)
 		end
 	end
-	listX2, listY2, listZ2 = listX2 + 1, listY2 + 1, listZ2 + 1
+	
+	if listX == math.huge then return end -- No chunks to update
+	
+	-- Slightly expanded cube to see neighbouring blocks at boundary
+	local encodeX, encodeY, encodeZ, encodeW, encodeH, encodeD =
+		listX * cw - 2, listY * ch - 2, listZ * cd - 2,
+		(listX2 + 1 - listX) * cw + 4, (listY2 + 1 - listY) * ch + 4, (listZ2 + 1 - listZ) * cd + 4
+	
+	local cubeVertices = {}
+	for x = encodeX, encodeX + encodeW - 1 do
+		for y = encodeY, encodeY + encodeH - 1 do
+			for z = encodeZ, encodeZ + encodeD - 1 do
+				local gx, gy, gz = -- Technically these should be divided by two to be the actual gradient, but it doesn't affect the end result in this case
+					(chunkManager.getBlockInWorld(chunks, x - 1, y, z) ~= 0 and 1 or 0) - (chunkManager.getBlockInWorld(chunks, x + 1, y, z) ~= 0 and 1 or 0),
+					(chunkManager.getBlockInWorld(chunks, x, y - 1, z) ~= 0 and 1 or 0) - (chunkManager.getBlockInWorld(chunks, x, y + 1, z) ~= 0 and 1 or 0),
+					(chunkManager.getBlockInWorld(chunks, x, y, z - 1) ~= 0 and 1 or 0) - (chunkManager.getBlockInWorld(chunks, x, y, z + 1) ~= 0 and 1 or 0)
+				local baseIndex =
+					-- 0 +
+					(x - encodeX) * 4 +
+					(y - encodeY) * encodeW * 4 +
+					(z - encodeZ) * encodeH * encodeW * 4
+				cubeVertices[baseIndex+0] = chunkManager.getBlockInWorld(chunks, x, y, z) ~= 0 and 1 or 0
+				cubeVertices[baseIndex+1] = gx
+				cubeVertices[baseIndex+2] = gy
+				cubeVertices[baseIndex+3] = gz
+			end
+		end
+	end
+	
+	local function getCubeVertex(x, y, z)
+		local baseIndex =
+			-- 0 +
+			(x - encodeX) * 4 +
+			(y - encodeY) * encodeW * 4 +
+			(z - encodeZ) * encodeH * encodeW * 4
+		-- value, gradientX, gradientY, gradientZ
+		return cubeVertices[baseIndex+0], cubeVertices[baseIndex+1], cubeVertices[baseIndex+2], cubeVertices[baseIndex+3]
+	end
 	
 	local triTable = constants.triTable
-	-- local maxSameEdgesPerCube = triTable.maxSameEdgesPerCube
-	-- local triangleNormals, lenTriangleNormals = {}, 0
-	-- local overallVerts = {}
-	-- local encodeX, encodeY, encodeZ = listX * cw - 1, listY * ch - 1, listZ * cd - 1
-	-- local encodeW, encodeH, encodeD = (listX2 - listX) * cw + 2, (listY2 - listY) * ch + 2, (listZ2 - listZ) * cd + 2
-	-- local chunkVerts = {}
 	for chunk in pairs(list) do
 		local chunkX, chunkY, chunkZ = chunk.x, chunk.y, chunk.z
 		local verts, lenVerts = {}, 0
-		-- chunkVerts[chunk] = verts
 		
 		local function doPos(x, y, z)
-			local vnnn = canDraw(getBlockFromSelfOrNeighbours(chunks, chunk, x-1, y-1, z-1)) and 0x1  or 0
-			local vpnn = canDraw(getBlockFromSelfOrNeighbours(chunks, chunk, x,   y-1, z-1)) and 0x2  or 0
-			local vpnp = canDraw(getBlockFromSelfOrNeighbours(chunks, chunk, x,   y-1, z  )) and 0x4  or 0
-			local vnnp = canDraw(getBlockFromSelfOrNeighbours(chunks, chunk, x-1, y-1, z  )) and 0x8  or 0
-			local vnpn = canDraw(getBlockFromSelfOrNeighbours(chunks, chunk, x-1, y,   z-1)) and 0x10 or 0
-			local vppn = canDraw(getBlockFromSelfOrNeighbours(chunks, chunk, x,   y,   z-1)) and 0x20 or 0
-			local vppp = canDraw(getBlockFromSelfOrNeighbours(chunks, chunk, x,   y,   z  )) and 0x40 or 0
-			local vnpp = canDraw(getBlockFromSelfOrNeighbours(chunks, chunk, x-1, y,   z  )) and 0x80 or 0
+			local worldX, worldY, worldZ = chunkX * cw + x, chunkY * ch + y, chunkZ * cd + z
 			
-			local triangles = triTable[vnnn+vnnp+vnpn+vnpp+vpnn+vpnp+vppn+vppp]
+			local nnnv, nnngx, nnngy, nnngz = getCubeVertex(worldX-1, worldY-1, worldZ-1)
+			local pnnv, pnngx, pnngy, pnngz = getCubeVertex(worldX,   worldY-1, worldZ-1)
+			local pnpv, pnpgx, pnpgy, pnpgz = getCubeVertex(worldX,   worldY-1, worldZ  )
+			local nnpv, nnpgx, nnpgy, nnpgz = getCubeVertex(worldX-1, worldY-1, worldZ  )
+			local npnv, npngx, npngy, npngz = getCubeVertex(worldX-1, worldY,   worldZ-1)
+			local ppnv, ppngx, ppngy, ppngz = getCubeVertex(worldX,   worldY,   worldZ-1)
+			local pppv, pppgx, pppgy, pppgz = getCubeVertex(worldX,   worldY,   worldZ  )
+			local nppv, nppgx, nppgy, nppgz = getCubeVertex(worldX-1, worldY,   worldZ  )
+			
+			local nnnv = nnnv ~= 0 and 0x1  or 0
+			local pnnv = pnnv ~= 0 and 0x2  or 0
+			local pnpv = pnpv ~= 0 and 0x4  or 0
+			local nnpv = nnpv ~= 0 and 0x8  or 0
+			local npnv = npnv ~= 0 and 0x10 or 0
+			local ppnv = ppnv ~= 0 and 0x20 or 0
+			local pppv = pppv ~= 0 and 0x40 or 0
+			local nppv = nppv ~= 0 and 0x80 or 0
+			
+			local triangles = triTable[nnnv+nnpv+npnv+nppv+pnnv+pnpv+ppnv+pppv]
 			local x1, y1, z1 = bw * (x + cw * chunkX - 0.5), bh * (y + ch * chunkY - 0.5), bd * (z + cd * chunkZ - 0.5)
 			local x2, y2, z2 = x1 + bw / 2, y1 + bh / 2, z1 + bd / 2
 			local x3, y3, z3 = x1 + bw, y1 + bh, z1 + bd
 			
-			local function getVertexPosition(edge)
-				if edge == 0 then      return x2, y1, z1
-				elseif edge == 1 then  return x3, y1, z2
-				elseif edge == 2 then  return x2, y1, z3
-				elseif edge == 3 then  return x1, y1, z2
-				elseif edge == 4 then  return x2, y3, z1
-				elseif edge == 5 then  return x3, y3, z2
-				elseif edge == 6 then  return x2, y3, z3
-				elseif edge == 7 then  return x1, y3, z2
-				elseif edge == 8 then  return x1, y2, z1
-				elseif edge == 9 then  return x3, y2, z1
-				elseif edge == 10 then return x3, y2, z3
-				elseif edge == 11 then return x1, y2, z3
+			local function getVertex(edge)
+				local x, y, z, gx, gy, gz
+				if edge == 0 then
+					gx, gy, gz =
+						nnngx * 0.5 + pnngx * 0.5,
+						nnngy * 0.5 + pnngy * 0.5,
+						nnngz * 0.5 + pnngz * 0.5
+					x, y, z = x2, y1, z1
+				elseif edge == 1 then
+					gx, gy, gz =
+						pnngx * 0.5 + pnpgx * 0.5,
+						pnngy * 0.5 + pnpgy * 0.5,
+						pnngz * 0.5 + pnpgz * 0.5
+					x, y, z = x3, y1, z2
+				elseif edge == 2 then
+					gx, gy, gz =
+						nnpgx * 0.5 + pnpgx * 0.5,
+						nnpgy * 0.5 + pnpgy * 0.5,
+						nnpgz * 0.5 + pnpgz * 0.5
+					x, y, z = x2, y1, z3
+				elseif edge == 3 then
+					gx, gy, gz =
+						nnngx * 0.5 + nnpgx * 0.5,
+						nnngy * 0.5 + nnpgy * 0.5,
+						nnngz * 0.5 + nnpgz * 0.5
+					x, y, z = x1, y1, z2
+				elseif edge == 4 then
+					gx, gy, gz =
+						npngx * 0.5 + ppngx * 0.5,
+						npngy * 0.5 + ppngy * 0.5,
+						npngz * 0.5 + ppngz * 0.5
+					x, y, z = x2, y3, z1
+				elseif edge == 5 then
+					gx, gy, gz =
+						ppngx * 0.5 + pppgx * 0.5,
+						ppngy * 0.5 + pppgy * 0.5,
+						ppngz * 0.5 + pppgz * 0.5
+					x, y, z = x3, y3, z2
+				elseif edge == 6 then
+					gx, gy, gz =
+						nppgx * 0.5 + pppgx * 0.5,
+						nppgy * 0.5 + pppgy * 0.5,
+						nppgz * 0.5 + pppgz * 0.5
+					x, y, z = x2, y3, z3
+				elseif edge == 7 then
+					gx, gy, gz =
+						npngx * 0.5 + nppgx * 0.5,
+						npngy * 0.5 + nppgy * 0.5,
+						npngz * 0.5 + nppgz * 0.5
+					x, y, z = x1, y3, z2
+				elseif edge == 8 then
+					gx, gy, gz =
+						nnngx * 0.5 + npngx * 0.5,
+						nnngy * 0.5 + npngy * 0.5,
+						nnngz * 0.5 + npngz * 0.5
+					x, y, z = x1, y2, z1
+				elseif edge == 9 then
+					gx, gy, gz =
+						pnngx * 0.5 + ppngx * 0.5,
+						pnngy * 0.5 + ppngy * 0.5,
+						pnngz * 0.5 + ppngz * 0.5
+					x, y, z = x3, y2, z1
+				elseif edge == 10 then
+					gx, gy, gz =
+						pnpgx * 0.5 + pppgx * 0.5,
+						pnpgy * 0.5 + pppgy * 0.5,
+						pnpgz * 0.5 + pppgz * 0.5
+					x, y, z = x3, y2, z3
+				elseif edge == 11 then
+					gx, gy, gz =
+						nnpgx * 0.5 + nppgx * 0.5,
+						nnpgy * 0.5 + nppgy * 0.5,
+						nnpgz * 0.5 + nppgz * 0.5
+					x, y, z = x1, y2, z3
 				end
+				
+				local magnitude = sqrt(gx^2+gy^2+gz^2)
+				local nx, ny, nz =
+					gx / magnitude,
+					gy / magnitude,
+					gz / magnitude
+				
+				return {x, y, z, nx, ny, nz}
 			end
-			
-			-- local function storeVertex(vertex, edge, i)
-			-- 	local x, y, z = x+chunkX*cw, y+chunkY*ch, z+chunkZ*cd
-			-- 	-- "Destination edges" are 8, 3, and 0
-			-- 	local edgeSharingIndex
-			-- 	if edge == 0 then
-			-- 		edgeSharingIndex = 0
-			-- 	elseif edge == 1 then
-			-- 		edge = 3
-			-- 		x = x + 1
-			-- 		edgeSharingIndex = 1
-			-- 	elseif edge == 2 then
-			-- 		edge = 0
-			-- 		z = z + 1
-			-- 		edgeSharingIndex = 1
-			-- 	elseif edge == 3 then
-			-- 		edgeSharingIndex = 0
-			-- 	elseif edge == 4 then
-			-- 		edge = 0
-			-- 		y = y + 1
-			-- 		edgeSharingIndex = 1
-			-- 	elseif edge == 5 then
-			-- 		edge = 3
-			-- 		x = x + 1
-			-- 		y = y + 1
-			-- 		edgeSharingIndex = 2
-			-- 	elseif edge == 6 then
-			-- 		edge = 0
-			-- 		y = y - 1
-			-- 		z = z - 1
-			-- 		edgeSharingIndex = 2
-			-- 	elseif edge == 7 then
-			-- 		edge = 3
-			-- 		y = y + 1
-			-- 		edgeSharingIndex = 1
-			-- 	elseif edge == 8 then
-			-- 		edgeSharingIndex = 0
-			-- 	elseif edge == 9 then
-			-- 		edge = 8
-			-- 		x = x + 1
-			-- 		edgeSharingIndex = 1
-			-- 	elseif edge == 10 then
-			-- 		edge = 8
-			-- 		x = x + 1
-			-- 		z = z + 1
-			-- 		edgeSharingIndex = 2
-			-- 	elseif edge == 11 then
-			-- 		edge = 8
-			-- 		z = z + 1
-			-- 		edgeSharingIndex = 1
-			-- 	end
-			-- 	-- if edge == 0 then
-			-- 	-- 	edge = 0
-			-- 	--[=[else]=]if edge == 3 then
-			-- 		edge = 1
-			-- 	elseif edge == 8 then
-			-- 		edge = 2
-			-- 	end
-			-- 	local index =
-			-- 		i +
-			-- 		edge * maxSameEdgesPerCube +
-			-- 		edgeSharingIndex * 3 * maxSameEdgesPerCube +
-			-- 		(x - encodeX) * 4 * 3 * maxSameEdgesPerCube +
-			-- 		(y - encodeY) * encodeW * 4 * 3 * maxSameEdgesPerCube +
-			-- 		(z - encodeZ) * encodeH * encodeW * 4 * 3 * maxSameEdgesPerCube
-			-- 	vertex.info = {x, y, z, edge, edgeSharingIndex}
-			-- 	overallVerts[index] = vertex
-			-- end
 			
 			local i = 0
 			while i < #triangles/3 do
-				local v1e = triangles[i*3+1]
-				local v2e = triangles[i*3+2]
-				local v3e = triangles[i*3+3]
-				
-				local v1x, v1y, v1z = getVertexPosition(v1e)
-				local v2x, v2y, v2z = getVertexPosition(v2e)
-				local v3x, v3y, v3z = getVertexPosition(v3e)
-				local e1x, e1y, e1z = v1x-v2x, v1y-v2y, v1z-v2z
-				local e2x, e2y, e2z = v1x-v3x, v1y-v3y, v1z-v3z
-				local normalX, normalY, normalZ = 
-					e1y * e2z - e1z * e2y,
-					e1z * e2x - e1x * e2z,
-					e1x * e2y - e1y * e2x
-				
-				-- Normalise
-				local magnitude = sqrt(normalX^2+normalY^2+normalZ^2)
-				normalX, normalY, normalZ =
-					normalX / magnitude,
-					normalY / magnitude,
-					normalZ / magnitude
-				
-				-- triangleNormals[lenTriangleNormals*3+1], triangleNormals[lenTriangleNormals*3+2], triangleNormals[lenTriangleNormals*3+3] = normalX, normalY, normalZ
-				
-				local v1 = {v1x, v1y, v1z, --[=[normalId = lenTriangleNormals}]=] normalX, normalY, normalZ, }
-				local v2 = {v2x, v2y, v2z, --[=[normalId = lenTriangleNormals}]=] normalX, normalY, normalZ, }
-				local v3 = {v3x, v3y, v3z, --[=[normalId = lenTriangleNormals}]=] normalX, normalY, normalZ, }
-				
+				local v1 = getVertex(triangles[i*3+1])
+				local v2 = getVertex(triangles[i*3+2])
+				local v3 = getVertex(triangles[i*3+3])
+			
 				verts[lenVerts + 1] = v1
 				verts[lenVerts + 2] = v2
 				verts[lenVerts + 3] = v3
 				
-				-- storeVertex(v1, v1e, i)
-				-- storeVertex(v2, v2e, i)
-				-- storeVertex(v3, v3e, i)
-				
-				-- lenTriangleNormals = lenTriangleNormals + 1
 				lenVerts = lenVerts + 3
 				i = i + 1
 			end
@@ -340,85 +364,9 @@ function chunkManager.doUpdates(world, list)
 		if not get(get(get(chunks, chunkX + 1), chunkY + 1), chunkZ + 1) then
 			doPos(cw, ch, cd)
 		end
-	-- end
-	-- 
-	-- for x = encodeX+1, encodeX+encodeW-1 do
-	-- 	for y = encodeY+1, encodeY+encodeH-1 do
-	-- 		for z = encodeZ+1, encodeZ+encodeD-1 do
-	-- 			local baseIndex =
-	-- 				-- 0 +
-	-- 				-- edge * maxSameEdgesPerCube +
-	-- 				-- 0 * 3  * maxSameEdgesPerCube +
-	-- 				(x - encodeX) * 4 * 3  * maxSameEdgesPerCube +
-	-- 				(y - encodeY) * encodeW * 4 * 3  * maxSameEdgesPerCube +
-	-- 				(z - encodeZ) * encodeH * encodeW * 4 * 3 * maxSameEdgesPerCube
-	-- 			for edge = 0, 2 do -- 0 = 0, 1 = 3, 2 = 8
-	-- 				local v1 = overallVerts[baseIndex+0*maxSameEdgesPerCube]
-	-- 				local v2 = overallVerts[baseIndex+3*maxSameEdgesPerCube]
-	-- 				local v3 = overallVerts[baseIndex+6*maxSameEdgesPerCube]
-	-- 				local v4 = overallVerts[baseIndex+9*maxSameEdgesPerCube]
-	-- 				local n = 0
-	-- 				local normalX, normalY, normalZ = 0, 0, 0
-	-- 				if v1 then
-	-- 					local triangleNormalId = v1.normalId
-	-- 					normalX = triangleNormals[triangleNormalId*3+1]
-	-- 					normalY = triangleNormals[triangleNormalId*3+2]
-	-- 					normalZ = triangleNormals[triangleNormalId*3+3]
-	-- 					n = 1
-	-- 				end
-	-- 				if v2 then
-	-- 					local triangleNormalId = v2.normalId
-	-- 					normalX = normalX + triangleNormals[triangleNormalId*3+1]
-	-- 					normalY = normalY + triangleNormals[triangleNormalId*3+2]
-	-- 					normalZ = normalZ + triangleNormals[triangleNormalId*3+3]
-	-- 					n = n + 1
-	-- 				end
-	-- 				if v3 then
-	-- 					local triangleNormalId = v3.normalId
-	-- 					normalX = normalX + triangleNormals[triangleNormalId*3+1]
-	-- 					normalY = normalY + triangleNormals[triangleNormalId*3+2]
-	-- 					normalZ = normalZ + triangleNormals[triangleNormalId*3+3]
-	-- 					n = n + 1
-	-- 				end
-	-- 				if v4 then
-	-- 					local triangleNormalId = v4.normalId
-	-- 					normalX = normalX + triangleNormals[triangleNormalId*3+1]
-	-- 					normalY = normalY + triangleNormals[triangleNormalId*3+2]
-	-- 					normalZ = normalZ + triangleNormals[triangleNormalId*3+3]
-	-- 					n = n + 1
-	-- 				end
-	-- 				local normalX, normalY, normalZ =
-	-- 					normalX / n,
-	-- 					normalY / n,
-	-- 					normalZ / n
-	-- 				if v1 then
-	-- 					v1[4], v1[5], v1[6] = normalX, normalY, normalZ
-	-- 				end
-	-- 				if v2 then
-	-- 					v2[4], v2[5], v2[6] = normalX, normalY, normalZ
-	-- 				end
-	-- 				if v3 then
-	-- 					v3[4], v3[5], v3[6] = normalX, normalY, normalZ
-	-- 				end
-	-- 				if v4 then
-	-- 					v4[4], v4[5], v4[6] = normalX, normalY, normalZ
-	-- 				end
-	-- 			end
-	-- 		end
-	-- 	end
-	-- end
-	-- 
-	-- for chunk in pairs(list) do
-	-- 	local verts = chunkVerts[chunk]
-		if chunk.mesh then
-			chunk.mesh:release()
-		end
-		if not verts[1] then
-			-- lenVerts == 0
-			chunk.mesh = nil
-		else
-			chunk.mesh = love.graphics.newMesh(vertexFormat, verts, "triangles")
-		end
+		
+		if chunk.mesh then chunk.mesh:release() end
+		chunk.mesh = lenVerts > 0 and love.graphics.newMesh(vertexFormat, verts, "triangles")
 	end
 end
 
