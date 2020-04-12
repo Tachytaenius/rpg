@@ -116,6 +116,22 @@ setmetatable(assets, {
 	end
 })
 
+local function makeWireframeModel(vertices, format)
+	format = format or {{"VertexPosition", "float", 3}}
+	assert(#vertices%2==0, "Must have an even number of vertices in!")
+	local vertsOut, lenVertsOut = {}, 0
+	for i, vertex in ipairs(vertices) do
+		if i%2==0 then
+			vertsOut[lenVertsOut+1], vertsOut[lenVertsOut+2] = vertex, vertex
+			lenVertsOut = lenVertsOut + 2
+		else
+			vertsOut[lenVertsOut+1] = vertex
+			lenVertsOut = lenVertsOut + 1
+		end
+	end
+	return love.graphics.newMesh(format, vertsOut, "triangles")
+end
+
 function loadObj(path, untextured)
 	-- TODO: Better
 	
@@ -231,7 +247,7 @@ local materialMap, surfaceMap, diffuseMap = assets.terrain.materialMap, assets.t
 local function makeCanvasses()
 	local ret = {}
 	for z = 0, assets.terrain.constants.textureDepthPixels - 1 do
-		ret[z+1] = love.graphics.newCanvas(assets.terrain.constants.textureWidthPixels, assets.terrain.constants.textureHeightPixels * numTextures)
+		ret[z+1] = love.graphics.newCanvas(assets.terrain.constants.textureWidthPixels, (constants.paddingForFilter * 2 + assets.terrain.constants.textureHeightPixels) * numTextures)
 	end
 	return ret
 end
@@ -246,7 +262,7 @@ function assets.terrain.load()
 	
 	for i, block in ipairs(registryTerrain.terrainByIndex) do
 		local blockName = block.name
-		local x, y = 0, (i - 1) * assets.terrain.constants.textureHeightPixels
+		local x, y = 0, (i - 1) * (assets.terrain.constants.textureHeightPixels + constants.paddingForFilter * 2)
 		for z = 0, assets.terrain.constants.textureDepthPixels - 1 do
 			drawTextureToAtlasses(x, y, z, blockName, normalAtlasSlices[z+1], ambientIlluminationAtlasSlices[z+1], diffuseAtlasSlices[z+1], metalnessAtlasSlices[z+1], roughnessAtlasSlices[z+1], fresnelAtlasSlices[z+1])
 		end
@@ -272,30 +288,30 @@ function assets.terrain.load()
 	materialMap.value = love.graphics.newVolumeImage(materialAtlasSlices)
 	surfaceMap.value = love.graphics.newVolumeImage(surfaceMapAtlasSlices)
 	diffuseMap.value = love.graphics.newVolumeImage(diffuseAtlasSlices)
-	
-	local format = {
-		{"VertexPosition", "float", 3}
-	}
+	materialMap.value:setWrap("repeat")
+	materialMap.value:setFilter("linear", "linear")
+	surfaceMap.value:setWrap("repeat")
+	surfaceMap.value:setFilter("linear", "linear")
+	diffuseMap.value:setWrap("repeat")
+	diffuseMap.value:setFilter("linear", "linear")
 	
 	local w, h, d, pad = constants.blockWidth, constants.blockHeight, constants.blockDepth, constants.blockCursorPadding
-	local vertices = {
-		{-pad, -pad, -pad}, {-pad, -pad, -pad}, {w+pad, -pad, -pad},
-		{w+pad, -pad, -pad}, {w+pad, -pad, -pad}, {w+pad, -pad, d+pad},
-		{w+pad, -pad, d+pad}, {w+pad, -pad, d+pad}, {-pad, -pad, d+pad},
-		{-pad, -pad, d+pad}, {-pad, -pad, d+pad}, {-pad, -pad, -pad},
+	assets.terrain.blockCursor.value = makeWireframeModel({
+		{-pad, -pad, -pad}, {w+pad, -pad, -pad},
+		{w+pad, -pad, -pad}, {w+pad, -pad, d+pad},
+		{w+pad, -pad, d+pad}, {-pad, -pad, d+pad},
+		{-pad, -pad, d+pad}, {-pad, -pad, -pad},
 		
-		{-pad, h+pad, -pad}, {-pad, h+pad, -pad}, {w+pad, h+pad, -pad},
-		{w+pad, h+pad, -pad}, {w+pad, h+pad, -pad}, {w+pad, h+pad, d+pad},
-		{w+pad, h+pad, d+pad},{w+pad, h+pad, d+pad}, {-pad, h+pad, d+pad},
-		{-pad, h+pad, d+pad}, {-pad, h+pad, d+pad}, {-pad, h+pad, -pad},
+		{-pad, h+pad, -pad}, {w+pad, h+pad, -pad},
+		{w+pad, h+pad, -pad}, {w+pad, h+pad, d+pad},
+		{w+pad, h+pad, d+pad}, {-pad, h+pad, d+pad},
+		{-pad, h+pad, d+pad}, {-pad, h+pad, -pad},
 		
-		{-pad, -pad, -pad}, {-pad, -pad, -pad}, {-pad, h+pad, -pad},
-		{-pad, -pad, d+pad}, {-pad, -pad, d+pad}, {-pad, h+pad, d+pad},
-		{w+pad, -pad, -pad}, {w+pad, -pad, -pad}, {w+pad, h+pad, -pad},
-		{w+pad, -pad, d+pad}, {w+pad, -pad, d+pad}, {w+pad, h+pad, d+pad}
-	}
-	
-	assets.terrain.blockCursor.value = love.graphics.newMesh(format, vertices, "triangles")
+		{-pad, -pad, -pad}, {-pad, h+pad, -pad},
+		{-pad, -pad, d+pad}, {-pad, h+pad, d+pad},
+		{w+pad, -pad, -pad}, {w+pad, h+pad, -pad},
+		{w+pad, -pad, d+pad}, {w+pad, h+pad, d+pad}
+	})
 end
 
 function drawTextureToAtlasses(x, y, z, name, na, aia, da, ma, ra, fa)
@@ -311,46 +327,70 @@ function drawTextureToAtlasses(x, y, z, name, na, aia, da, ma, ra, fa)
 		blockTextureGenerators.hm = assets.terrain.constants.textureHeightMetres
 		blockTextureGenerators.dm = assets.terrain.constants.textureDepthMetres
 		
-		local nid = love.image.newImageData(assets.terrain.constants.textureWidthPixels, assets.terrain.constants.textureHeightPixels)
-		local aiid = love.image.newImageData(assets.terrain.constants.textureWidthPixels, assets.terrain.constants.textureHeightPixels)
-		local did = love.image.newImageData(assets.terrain.constants.textureWidthPixels, assets.terrain.constants.textureHeightPixels)
-		local mid = love.image.newImageData(assets.terrain.constants.textureWidthPixels, assets.terrain.constants.textureHeightPixels)
-		local rid = love.image.newImageData(assets.terrain.constants.textureWidthPixels, assets.terrain.constants.textureHeightPixels)
-		local fid = love.image.newImageData(assets.terrain.constants.textureWidthPixels, assets.terrain.constants.textureHeightPixels)
+		local nid = love.image.newImageData(assets.terrain.constants.textureWidthPixels, assets.terrain.constants.textureHeightPixels + constants.paddingForFilter * 2)
+		local aiid = love.image.newImageData(assets.terrain.constants.textureWidthPixels, assets.terrain.constants.textureHeightPixels + constants.paddingForFilter * 2)
+		local did = love.image.newImageData(assets.terrain.constants.textureWidthPixels, assets.terrain.constants.textureHeightPixels + constants.paddingForFilter * 2)
+		local mid = love.image.newImageData(assets.terrain.constants.textureWidthPixels, assets.terrain.constants.textureHeightPixels + constants.paddingForFilter * 2)
+		local rid = love.image.newImageData(assets.terrain.constants.textureWidthPixels, assets.terrain.constants.textureHeightPixels + constants.paddingForFilter * 2)
+		local fid = love.image.newImageData(assets.terrain.constants.textureWidthPixels, assets.terrain.constants.textureHeightPixels + constants.paddingForFilter * 2)
 		
 		nid:mapPixel(
 			function(x, y)
-				local x, y, z = blockTextureGenerators.normal(x / assets.terrain.constants.textureWidthPixels, y / assets.terrain.constants.textureHeightPixels, z / assets.terrain.constants.textureDepthPixels)
+				local x, y, z = blockTextureGenerators.normal(
+					x / assets.terrain.constants.textureWidthPixels,
+					((y - constants.paddingForFilter) / assets.terrain.constants.textureHeightPixels) % 1,
+					z / assets.terrain.constants.textureDepthPixels
+				)
 				return x, y, z, 1
 			end
 		)
 		aiid:mapPixel(
 			function(x, y)
-				local ai = blockTextureGenerators.ambientIllumination(x / assets.terrain.constants.textureWidthPixels, y / assets.terrain.constants.textureHeightPixels, z / assets.terrain.constants.textureDepthPixels)
+				local ai = blockTextureGenerators.ambientIllumination(
+					x / assets.terrain.constants.textureWidthPixels,
+					((y - constants.paddingForFilter) / assets.terrain.constants.textureHeightPixels) % 1,
+					z / assets.terrain.constants.textureDepthPixels
+				)
 				return ai, ai, ai, 1
 			end
 		)
 		did:mapPixel(
 			function(x, y)
-				local r, g, b = blockTextureGenerators.diffuse(x / assets.terrain.constants.textureWidthPixels, y / assets.terrain.constants.textureHeightPixels, z / assets.terrain.constants.textureDepthPixels)
+				local r, g, b = blockTextureGenerators.diffuse(
+					x / assets.terrain.constants.textureWidthPixels,
+					((y - constants.paddingForFilter) / assets.terrain.constants.textureHeightPixels) % 1,
+					z / assets.terrain.constants.textureDepthPixels
+				)
 				return r, g, b, 1
 			end
 		)
 		mid:mapPixel(
 			function(x, y)
-				local m = blockTextureGenerators.metalness(x / assets.terrain.constants.textureWidthPixels, y / assets.terrain.constants.textureHeightPixels, z / assets.terrain.constants.textureDepthPixels)
+				local m = blockTextureGenerators.metalness(
+					x / assets.terrain.constants.textureWidthPixels,
+					((y - constants.paddingForFilter) / assets.terrain.constants.textureHeightPixels) % 1,
+					z / assets.terrain.constants.textureDepthPixels
+				)
 				return m, m, m, 1
 			end
 		)
 		rid:mapPixel(
 			function(x, y)
-				local r = blockTextureGenerators.roughness(x / assets.terrain.constants.textureWidthPixels, y / assets.terrain.constants.textureHeightPixels, z / assets.terrain.constants.textureDepthPixels)
+				local r = blockTextureGenerators.roughness(
+					x / assets.terrain.constants.textureWidthPixels,
+					((y - constants.paddingForFilter) / assets.terrain.constants.textureHeightPixels) % 1,
+					z / assets.terrain.constants.textureDepthPixels
+				)
 				return r, r, r, 1
 			end
 		)
 		fid:mapPixel(
 			function(x, y)
-				local f = blockTextureGenerators.fresnel(x / assets.terrain.constants.textureWidthPixels, y / assets.terrain.constants.textureHeightPixels, z / assets.terrain.constants.textureDepthPixels)
+				local f = blockTextureGenerators.fresnel(
+					x / assets.terrain.constants.textureWidthPixels,
+					((y - constants.paddingForFilter) / assets.terrain.constants.textureHeightPixels) % 1,
+					z / assets.terrain.constants.textureDepthPixels
+				)
 				return f, f, f, 1
 			end
 		)

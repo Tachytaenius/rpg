@@ -161,16 +161,23 @@ function chunkManager.doUpdates(world, list)
 	for x = encodeX, encodeX + encodeW - 1 do
 		for y = encodeY, encodeY + encodeH - 1 do
 			for z = encodeZ, encodeZ + encodeD - 1 do
-				local gx, gy, gz = -- Technically these should be divided by two to be the actual gradient, but it doesn't affect the end result in this case
-					(chunkManager.getBlockInWorld(chunks, x - 1, y, z) ~= 0 and 1 or 0) - (chunkManager.getBlockInWorld(chunks, x + 1, y, z) ~= 0 and 1 or 0),
-					(chunkManager.getBlockInWorld(chunks, x, y - 1, z) ~= 0 and 1 or 0) - (chunkManager.getBlockInWorld(chunks, x, y + 1, z) ~= 0 and 1 or 0),
-					(chunkManager.getBlockInWorld(chunks, x, y, z - 1) ~= 0 and 1 or 0) - (chunkManager.getBlockInWorld(chunks, x, y, z + 1) ~= 0 and 1 or 0)
+				local nx, px, ny, py, nz, pz =
+					chunkManager.getBlockInWorld(chunks, x - 1, y, z) ~= 0 and 1 or 0,
+					chunkManager.getBlockInWorld(chunks, x + 1, y, z) ~= 0 and 1 or 0,
+					chunkManager.getBlockInWorld(chunks, x, y - 1, z) ~= 0 and 1 or 0,
+					chunkManager.getBlockInWorld(chunks, x, y + 1, z) ~= 0 and 1 or 0,
+					chunkManager.getBlockInWorld(chunks, x, y, z - 1) ~= 0 and 1 or 0,
+					chunkManager.getBlockInWorld(chunks, x, y, z + 1) ~= 0 and 1 or 0
+				
+				local gx, gy, gz = nx - px, ny - py, nz - pz -- Technically these should be divided by two to be the actual gradient, but it doesn't affect the end result in this case
+				
 				local baseIndex =
 					-- 0 +
 					(x - encodeX) * 4 +
 					(y - encodeY) * encodeW * 4 +
 					(z - encodeZ) * encodeH * encodeW * 4
-				cubeVertices[baseIndex+0] = chunkManager.getBlockInWorld(chunks, x, y, z) ~= 0 and 1 or 0
+				
+				cubeVertices[baseIndex+0] = (chunkManager.getBlockInWorld(chunks, x, y, z) ~= 0 and constants.surfaceLevel or 0) + 0.5 * (nx + px + ny + py + nz + pz)
 				cubeVertices[baseIndex+1] = gx
 				cubeVertices[baseIndex+2] = gy
 				cubeVertices[baseIndex+3] = gz
@@ -205,94 +212,111 @@ function chunkManager.doUpdates(world, list)
 			local pppv, pppgx, pppgy, pppgz = getCubeVertex(worldX,   worldY,   worldZ  )
 			local nppv, nppgx, nppgy, nppgz = getCubeVertex(worldX-1, worldY,   worldZ  )
 			
-			local nnnv = nnnv ~= 0 and 0x1  or 0
-			local pnnv = pnnv ~= 0 and 0x2  or 0
-			local pnpv = pnpv ~= 0 and 0x4  or 0
-			local nnpv = nnpv ~= 0 and 0x8  or 0
-			local npnv = npnv ~= 0 and 0x10 or 0
-			local ppnv = ppnv ~= 0 and 0x20 or 0
-			local pppv = pppv ~= 0 and 0x40 or 0
-			local nppv = nppv ~= 0 and 0x80 or 0
+			local innnv = nnnv >= constants.surfaceLevel and 0x1  or 0
+			local ipnnv = pnnv >= constants.surfaceLevel and 0x2  or 0
+			local ipnpv = pnpv >= constants.surfaceLevel and 0x4  or 0
+			local innpv = nnpv >= constants.surfaceLevel and 0x8  or 0
+			local inpnv = npnv >= constants.surfaceLevel and 0x10 or 0
+			local ippnv = ppnv >= constants.surfaceLevel and 0x20 or 0
+			local ipppv = pppv >= constants.surfaceLevel and 0x40 or 0
+			local inppv = nppv >= constants.surfaceLevel and 0x80 or 0
 			
-			local triangles = triTable[nnnv+nnpv+npnv+nppv+pnnv+pnpv+ppnv+pppv]
+			local triangles = triTable[innnv+innpv+inpnv+inppv+ipnnv+ipnpv+ippnv+ipppv]
 			local x1, y1, z1 = bw * (x + cw * chunkX - 0.5), bh * (y + ch * chunkY - 0.5), bd * (z + cd * chunkZ - 0.5)
-			local x2, y2, z2 = x1 + bw / 2, y1 + bh / 2, z1 + bd / 2
-			local x3, y3, z3 = x1 + bw, y1 + bh, z1 + bd
+			local x2, y2, z2 = x1 + bw, y1 + bh, z1 + bd
+			
+			local function getLerp(aVal, bVal)
+				aVal = aVal + 0.5
+				bVal = bVal + 0.5
+				return aVal / (aVal + bVal)
+			end
 			
 			local function getVertex(edge)
 				local x, y, z, gx, gy, gz
 				if edge == 0 then
+					local lerp = getLerp(nnnv, pnnv)
 					gx, gy, gz =
-						nnngx * 0.5 + pnngx * 0.5,
-						nnngy * 0.5 + pnngy * 0.5,
-						nnngz * 0.5 + pnngz * 0.5
-					x, y, z = x2, y1, z1
+						nnngx * (1 - lerp) + pnngx * lerp,
+						nnngy * (1 - lerp) + pnngy * lerp,
+						nnngz * (1 - lerp) + pnngz * lerp
+					x, y, z = x1 * (1 - lerp) + x2 * lerp, y1, z1
 				elseif edge == 1 then
+					local lerp = getLerp(pnnv, pnpv)
 					gx, gy, gz =
-						pnngx * 0.5 + pnpgx * 0.5,
-						pnngy * 0.5 + pnpgy * 0.5,
-						pnngz * 0.5 + pnpgz * 0.5
-					x, y, z = x3, y1, z2
+						pnngx * (1 - lerp) + pnpgx * lerp,
+						pnngy * (1 - lerp) + pnpgy * lerp,
+						pnngz * (1 - lerp) + pnpgz * lerp
+					x, y, z = x2, y1, z1 * (1 - lerp) + z2 * lerp
 				elseif edge == 2 then
+					local lerp = getLerp(nnpv, pnpv)
 					gx, gy, gz =
-						nnpgx * 0.5 + pnpgx * 0.5,
-						nnpgy * 0.5 + pnpgy * 0.5,
-						nnpgz * 0.5 + pnpgz * 0.5
-					x, y, z = x2, y1, z3
+						nnpgx * (1 - lerp) + pnpgx * lerp,
+						nnpgy * (1 - lerp) + pnpgy * lerp,
+						nnpgz * (1 - lerp) + pnpgz * lerp
+					x, y, z = x1 * (1 - lerp) + x2 * lerp, y1, z2
 				elseif edge == 3 then
+					local lerp = getLerp(nnnv, nnpv)
 					gx, gy, gz =
-						nnngx * 0.5 + nnpgx * 0.5,
-						nnngy * 0.5 + nnpgy * 0.5,
-						nnngz * 0.5 + nnpgz * 0.5
-					x, y, z = x1, y1, z2
+						nnngx * (1 - lerp) + nnpgx * lerp,
+						nnngy * (1 - lerp) + nnpgy * lerp,
+						nnngz * (1 - lerp) + nnpgz * lerp
+					x, y, z = x1, y1, z1 * (1 - lerp) + z2 * lerp
 				elseif edge == 4 then
+					local lerp = getLerp(npnv, ppnv)
 					gx, gy, gz =
-						npngx * 0.5 + ppngx * 0.5,
-						npngy * 0.5 + ppngy * 0.5,
-						npngz * 0.5 + ppngz * 0.5
-					x, y, z = x2, y3, z1
+						npngx * (1 - lerp) + ppngx * lerp,
+						npngy * (1 - lerp) + ppngy * lerp,
+						npngz * (1 - lerp) + ppngz * lerp
+					x, y, z = x1 * (1 - lerp) + x2 * lerp, y2, z1
 				elseif edge == 5 then
+					local lerp = getLerp(ppnv, pppv)
 					gx, gy, gz =
-						ppngx * 0.5 + pppgx * 0.5,
-						ppngy * 0.5 + pppgy * 0.5,
-						ppngz * 0.5 + pppgz * 0.5
-					x, y, z = x3, y3, z2
+						ppngx * (1 - lerp) + pppgx * lerp,
+						ppngy * (1 - lerp) + pppgy * lerp,
+						ppngz * (1 - lerp) + pppgz * lerp
+					x, y, z = x2, y2, z1 * (1 - lerp) + z2 * lerp
 				elseif edge == 6 then
+					local lerp = getLerp(nppv, pppv)
 					gx, gy, gz =
-						nppgx * 0.5 + pppgx * 0.5,
-						nppgy * 0.5 + pppgy * 0.5,
-						nppgz * 0.5 + pppgz * 0.5
-					x, y, z = x2, y3, z3
+						nppgx * (1 - lerp) + pppgx * lerp,
+						nppgy * (1 - lerp) + pppgy * lerp,
+						nppgz * (1 - lerp) + pppgz * lerp
+					x, y, z = x1 * (1 - lerp) + x2 * lerp, y2, z2
 				elseif edge == 7 then
+					local lerp = getLerp(npnv, nppv)
 					gx, gy, gz =
-						npngx * 0.5 + nppgx * 0.5,
-						npngy * 0.5 + nppgy * 0.5,
-						npngz * 0.5 + nppgz * 0.5
-					x, y, z = x1, y3, z2
+						npngx * (1 - lerp) + nppgx * lerp,
+						npngy * (1 - lerp) + nppgy * lerp,
+						npngz * (1 - lerp) + nppgz * lerp
+					x, y, z = x1, y2, z1 * (1 - lerp) + z2 * lerp
 				elseif edge == 8 then
+					local lerp = getLerp(nnnv, npnv)
 					gx, gy, gz =
-						nnngx * 0.5 + npngx * 0.5,
-						nnngy * 0.5 + npngy * 0.5,
-						nnngz * 0.5 + npngz * 0.5
-					x, y, z = x1, y2, z1
+						nnngx * (1 - lerp) + npngx * lerp,
+						nnngy * (1 - lerp) + npngy * lerp,
+						nnngz * (1 - lerp) + npngz * lerp
+					x, y, z = x1, y1 * (1 - lerp) + y2 * lerp, z1
 				elseif edge == 9 then
+					local lerp = getLerp(pnnv, ppnv)
 					gx, gy, gz =
-						pnngx * 0.5 + ppngx * 0.5,
-						pnngy * 0.5 + ppngy * 0.5,
-						pnngz * 0.5 + ppngz * 0.5
-					x, y, z = x3, y2, z1
+						pnngx * (1 - lerp) + ppngx * lerp,
+						pnngy * (1 - lerp) + ppngy * lerp,
+						pnngz * (1 - lerp) + ppngz * lerp
+					x, y, z = x2, y1 * (1 - lerp) + y2 * lerp, z1
 				elseif edge == 10 then
+					local lerp = getLerp(pnpv, pppv)
 					gx, gy, gz =
-						pnpgx * 0.5 + pppgx * 0.5,
-						pnpgy * 0.5 + pppgy * 0.5,
-						pnpgz * 0.5 + pppgz * 0.5
-					x, y, z = x3, y2, z3
+						pnpgx * (1 - lerp) + pppgx * lerp,
+						pnpgy * (1 - lerp) + pppgy * lerp,
+						pnpgz * (1 - lerp) + pppgz * lerp
+					x, y, z = x2, y1 * (1 - lerp) + y2 * lerp, z2
 				elseif edge == 11 then
+					local lerp = getLerp(nnpv, nppv)
 					gx, gy, gz =
-						nnpgx * 0.5 + nppgx * 0.5,
-						nnpgy * 0.5 + nppgy * 0.5,
-						nnpgz * 0.5 + nppgz * 0.5
-					x, y, z = x1, y2, z3
+						nnpgx * (1 - lerp) + nppgx * lerp,
+						nnpgy * (1 - lerp) + nppgy * lerp,
+						nnpgz * (1 - lerp) + nppgz * lerp
+					x, y, z = x1, y1 * (1 - lerp) + y2 * lerp, z2
 				end
 				
 				local magnitude = sqrt(gx^2+gy^2+gz^2)

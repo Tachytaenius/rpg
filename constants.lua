@@ -98,8 +98,9 @@ constants.sideBits = {
 	nz = 5
 }
 
+constants.paddingForFilter = 2 -- how many pixels of texture wrap to bake into the terrain texture atlas
 -- For marching cubes
-constants.surfaceLevel = 0
+constants.surfaceLevel = 3.5
 constants.triTable = { [0] =
 	{},
 	{0, 8, 3},

@@ -42,6 +42,7 @@ function scene.init()
 	blockCursorShader = love.graphics.newShader("shaders/blockCursor.glsl")
 	
 	gBufferShader:send("textureSize", {assets.terrain.constants.textureWidthMetres, assets.terrain.constants.textureHeightMetres, assets.terrain.constants.textureDepthMetres})
+	gBufferShader:send("texturePaddingSize", constants.paddingForFilter / assets.terrain.constants.textureHeightPixels)
 	gBufferShader:send("numTextures", assets.terrain.constants.numTextures)
 	lightingShader:send("nearPlane", constants.lightNearPlane) -- For getting values out of the shadow map depth buffer
 	lightingShader:send("windowSize", {constants.width, constants.height})

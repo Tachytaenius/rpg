@@ -47,6 +47,7 @@ varying float textureIndex;
 	}
 	
 	uniform vec3 textureSize;
+	uniform float texturePaddingSize;
 	uniform vec3 viewPosition;
 	uniform float numTextures;
 	uniform sampler3D diffuseMap;
@@ -54,9 +55,12 @@ varying float textureIndex;
 	uniform sampler3D surfaceMap;
 	
 	void effect() {
-		vec3 textureCoords = mod(fragmentPosition-0.0001, textureSize) / textureSize;
-		textureCoords.y += textureIndex;
-		textureCoords.y /= numTextures;
+		vec3 textureCoords;
+		textureCoords.xz = fragmentPosition.xz / textureSize.xz;
+		textureCoords.y = mod(fragmentPosition.y-0.0001, textureSize.y) / textureSize.y;
+		textureCoords.y = (textureCoords.y + texturePaddingSize) / (1.0 + texturePaddingSize * 2.0);
+		textureCoords.y = (textureCoords.y + textureIndex) / numTextures;
+		
 		vec4 surfaceTexel = Texel(surfaceMap, textureCoords);
 		vec3 mapNormal = surfaceTexel.rgb;
 		float ambientIllumination = surfaceTexel.a;
