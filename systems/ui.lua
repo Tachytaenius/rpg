@@ -44,8 +44,11 @@ end
 
 function ui.update()
 	assert(ui.current, "Can't update UI without a UI")
-	
-	suit.updateMouse(ui.current.mouseX, ui.current.mouseY, input.didFrameCommand("uiPrimary"))
+	if love.mouse.getRelativeMode() then
+		suit.updateMouse(ui.current.mouseX, ui.current.mouseY, input.didFrameCommand("uiPrimary"))
+	else
+		suit.updateMouse(ui.current.mouseX, ui.current.mouseY, nil)
+	end
 	
 	local destroy, typeToTransitionTo = uis[ui.current.type].update(ui.current)
 	if destroy then

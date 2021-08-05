@@ -15,6 +15,12 @@ local vertexFormat = {
 	{"vertexDamage", "float", 1}
 }
 
+local function get(t, k)
+	if t then
+		return t[k]
+	end
+end
+
 local chunkManager = {}
 
 function chunkManager.add(world, chunk)
@@ -77,15 +83,18 @@ function chunkManager.getBlock(self, x, y, z)
 	return string.byte(terrainChar), state, damage
 end
 
-local function canDraw(thisBlockId, neighbourBlockId)
-	local thisBlock, neighbourBlock = terrainByIndex[thisBlockId], terrainByIndex[neighbourBlockId]
-	return not thisBlock.invisible and (neighbourBlock == nil or neighbourBlock.invisible)
+function chunkManager.getBlockFromWorldPosition(chunks, x, y, z)
+	local bx, by, bz = math.floor(x/bw), math.floor(y/bh), math.floor(z/bd)
+	local cx, cy, cz = math.floor(bx/cw), math.floor(by/ch), math.floor(bz/cd)
+	local cbx, cby, cbz = bx%cw, by%ch, bz%cd
+	local chunk = get(get(get(chunks,cx),cy),cz)
+	if not chunk then return end
+	return chunkManager.getBlock(chunk,cbx,cby,cbz)
 end
 
-local function get(t, k)
-	if t then
-		return t[k]
-	end
+local function canDraw(thisBlockId, neighbourBlockId)
+	local thisBlock, neighbourBlock = terrainByIndex[thisBlockId], terrainByIndex[neighbourBlockId]
+	return not thisBlock.invisible and (neighbourBlock == nil or neighbourBlock.invisible or neighbourBlock.transparent and not thisBlock.transparent)
 end
 
 local addRect
